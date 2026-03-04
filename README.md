@@ -50,13 +50,23 @@ Open [http://localhost:3000](http://localhost:3000). Sign up or sign in, then us
 
 ### 5. Telegram webhook
 
-After deploying to Vercel (or any HTTPS host), set the webhook:
+After deploying to Vercel (or any HTTPS host), set the webhook **once**:
+
+**Cara otomatis (disarankan):** Set env `TELEGRAM_SET_WEBHOOK_SECRET` di Vercel (opsional, untuk keamanan). Setelah deploy, buka di browser:
+
+```
+https://<domain-vercel-anda>/api/telegram/set-webhook?secret=RAHASIA_ANDA
+```
+
+(Ganti `<domain-vercel-anda>` dengan domain Vercel Anda, dan `RAHASIA_ANDA` dengan nilai yang sama seperti `TELEGRAM_SET_WEBHOOK_SECRET` di env. Kalau env `TELEGRAM_SET_WEBHOOK_SECRET` tidak di-set, endpoint bisa dipanggil tanpa `?secret=...`.) Webhook akan terdaftar ke URL deploy saat ini.
+
+**Cara manual:** Jalankan di terminal (ganti token dan URL):
 
 ```bash
 curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://YOUR_VERCEL_URL/api/telegram/webhook"
 ```
 
-Replace `YOUR_BOT_TOKEN` and `YOUR_VERCEL_URL`. Messages to the bot will be parsed and saved to the same `transactions` table.
+Messages to the bot will be parsed and saved to the same `transactions` table.
 
 **Message format:**
 
