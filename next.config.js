@@ -1,10 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   async rewrites() {
-    return [
-      { source: "/manifest.json", destination: "/api/manifest" },
-      { source: "/ServiceWorker.js", destination: "/api/service-worker" },
-    ];
+    return {
+      beforeFiles: [
+        { source: "/manifest.json", destination: "/api/manifest" },
+        { source: "/ServiceWorker.js", destination: "/api/service-worker" },
+      ],
+    };
   },
 };
 

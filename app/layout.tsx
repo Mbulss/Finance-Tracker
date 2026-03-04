@@ -34,7 +34,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="font-sans antialiased min-h-screen bg-surface text-slate-900 dark:bg-slate-900 dark:text-slate-100">
+      <body className="font-sans antialiased min-h-screen bg-surface text-slate-900 dark:bg-slate-900 dark:text-slate-100" suppressHydrationWarning>
         <ThemeProvider>
           {children}
         </ThemeProvider>
