@@ -2,6 +2,7 @@
 
 import type { Transaction } from "@/lib/types";
 import { formatCurrency, getMonthKey } from "@/lib/utils";
+import { CountUp } from "./CountUp";
 
 interface SummaryCardsProps {
   transactions: Transaction[];
@@ -40,13 +41,13 @@ export function SummaryCards({ transactions, monthFilter }: SummaryCardsProps) {
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-      <div className="relative overflow-hidden rounded-2xl border border-border dark:border-slate-700 bg-gradient-to-br from-card to-primary/5 dark:from-slate-800 dark:to-primary/10 p-4 shadow-card sm:p-6 transition-shadow hover:shadow-glow dark:hover:shadow-glow-dark">
+      <div className="relative overflow-hidden rounded-2xl border border-border dark:border-slate-700 bg-gradient-to-br from-card to-primary/5 dark:from-slate-800 dark:to-primary/10 p-4 shadow-card sm:p-6 transition-shadow hover:shadow-card-hover dark:hover:shadow-card-hover hover:shadow-glow dark:hover:shadow-glow-dark">
         <div className="absolute right-0 top-0 h-24 w-24 translate-x-4 -translate-y-4 rounded-full bg-primary/10 dark:bg-primary/20 blur-2xl" />
         <div className="relative flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-muted dark:text-slate-400">Total Saldo</p>
-            <p className={`mt-1 text-xl font-bold tabular-nums sm:text-2xl ${balance >= 0 ? "text-slate-800 dark:text-slate-100" : "text-expense"}`}>
-              {formatCurrency(balance)}
+            <p className={`mt-1 text-xl font-bold font-mono tabular-nums sm:text-2xl animate-count-up ${balance >= 0 ? "text-slate-800 dark:text-slate-100" : "text-expense"}`}>
+              <CountUp value={balance} formatter={(n) => formatCurrency(n)} />
             </p>
             <p className="mt-1 text-xs text-muted dark:text-slate-400">
               {isAllTime ? "Semua waktu" : "Bulan ini"}
@@ -63,7 +64,9 @@ export function SummaryCards({ transactions, monthFilter }: SummaryCardsProps) {
         <div className="flex items-center justify-between">
           <div className="min-w-0">
             <p className="text-sm font-medium text-muted dark:text-slate-400">Pemasukan</p>
-            <p className="mt-1 text-xl font-bold tabular-nums text-income sm:text-2xl">{formatCurrency(income)}</p>
+            <p className="mt-1 text-xl font-bold font-mono tabular-nums text-income sm:text-2xl">
+            <CountUp value={income} formatter={(n) => formatCurrency(n)} />
+          </p>
             {prevIncome > 0 && (
               <p className={`mt-1 text-xs ${incomeDiff >= 0 ? "text-income" : "text-expense"}`}>
                 {incomeDiff >= 0 ? "↑" : "↓"} {Math.abs(incomeDiff).toFixed(0)}% vs bulan lalu
@@ -81,7 +84,9 @@ export function SummaryCards({ transactions, monthFilter }: SummaryCardsProps) {
         <div className="flex items-center justify-between">
           <div className="min-w-0">
             <p className="text-sm font-medium text-muted dark:text-slate-400">Pengeluaran</p>
-            <p className="mt-1 text-xl font-bold tabular-nums text-expense sm:text-2xl">{formatCurrency(expense)}</p>
+            <p className="mt-1 text-xl font-bold font-mono tabular-nums text-expense sm:text-2xl">
+            <CountUp value={expense} formatter={(n) => formatCurrency(n)} />
+          </p>
             {prevExpense > 0 && (
               <p className={`mt-1 text-xs ${expenseDiff <= 0 ? "text-income" : "text-expense"}`}>
                 {expenseDiff <= 0 ? "↓" : "↑"} {Math.abs(expenseDiff).toFixed(0)}% vs bulan lalu

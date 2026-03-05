@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useToast } from "@/components/ToastContext";
 import type { TransactionType } from "@/lib/types";
 import { CATEGORIES } from "@/lib/types";
 import { formatAmountDisplay, parseAmountInput } from "@/lib/utils";
@@ -9,9 +10,11 @@ import { formatAmountDisplay, parseAmountInput } from "@/lib/utils";
 interface AddTransactionFormProps {
   userId: string;
   onSuccess: () => void;
+  onOptimisticAdd?: (t: { id: string; user_id: string; type: "income" | "expense"; amount: number; category: string; note: string; created_at: string }) => void;
+  onOptimisticFail?: (tempId: string) => void;
 }
 
-export function AddTransactionForm({ userId, onSuccess }: AddTransactionFormProps) {
+export function AddTransactionForm({ userId, onSuccess, onOptimisticAdd, onOptimisticFail }: AddTransactionFormProps) {
   const [type, setType] = useState<TransactionType>("expense");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState<string>(CATEGORIES.expense[0]);
@@ -19,6 +22,7 @@ export function AddTransactionForm({ userId, onSuccess }: AddTransactionFormProp
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const supabase = createClient();
+  const { showToast } = useToast();
 
   const categories = type === "income" ? CATEGORIES.income : CATEGORIES.expense;
 
@@ -31,6 +35,17 @@ export function AddTransactionForm({ userId, onSuccess }: AddTransactionFormProp
       return;
     }
     setLoading(true);
+    const tempId = "opt-" + Date.now();
+    const optimisticRow = {
+      id: tempId,
+      user_id: userId,
+      type,
+      amount: num,
+      category: category || categories[0],
+      note: note.trim() || "",
+      created_at: new Date().toISOString(),
+    };
+    onOptimisticAdd?.(optimisticRow);
     try {
       const { error: err } = await supabase.from("transactions").insert({
         user_id: userId,
@@ -43,8 +58,10 @@ export function AddTransactionForm({ userId, onSuccess }: AddTransactionFormProp
       setAmount("");
       setNote("");
       setCategory(categories[0]);
+      showToast("Transaksi disimpan");
       onSuccess();
     } catch (e) {
+      onOptimisticFail?.(tempId);
       setError(e instanceof Error ? e.message : "Gagal menyimpan.");
     } finally {
       setLoading(false);

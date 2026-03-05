@@ -11,6 +11,8 @@ import { TransactionTable } from "./TransactionTable";
 import { ExpensePieChart } from "./ExpensePieChart";
 import { MonthlyBarChart } from "./MonthlyBarChart";
 import { MonthPicker } from "./MonthPicker";
+import { useToast } from "./ToastContext";
+import { SkeletonCard, SkeletonTable } from "./Skeleton";
 
 interface DashboardProps {
   userId: string;
@@ -25,8 +27,11 @@ export function Dashboard({ userId }: DashboardProps) {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   });
   const [liveUpdated, setLiveUpdated] = useState(false);
+  const [optimisticTransactions, setOptimisticTransactions] = useState<Transaction[]>([]);
+  const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set());
   const liveUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const supabase = createClient();
+  const { showToast } = useToast();
 
   const fetchTransactions = useCallback(async () => {
     const { data, error } = await supabase
@@ -35,6 +40,7 @@ export function Dashboard({ userId }: DashboardProps) {
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
     if (!error) setTransactions(data ?? []);
+    setOptimisticTransactions([]);
     setLoading(false);
   }, [supabase, userId]);
 
@@ -69,13 +75,37 @@ export function Dashboard({ userId }: DashboardProps) {
       ? transactions
       : transactions.filter((t) => getMonthKey(new Date(t.created_at)) === monthFilter);
 
+  const optimisticInPeriod =
+    periodType === "all"
+      ? optimisticTransactions
+      : optimisticTransactions.filter((t) => getMonthKey(new Date(t.created_at)) === monthFilter);
+  const displayedForTable = [...filteredByMonth, ...optimisticInPeriod]
+    .filter((t) => !pendingDeleteIds.has(t.id))
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
   const income = filteredByMonth.filter((t) => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
   const expense = filteredByMonth.filter((t) => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
   const balance = income - expense;
 
   const handleDelete = async (id: string) => {
-    await supabase.from("transactions").delete().eq("id", id).eq("user_id", userId);
-    fetchTransactions();
+    setPendingDeleteIds((prev) => new Set(prev).add(id));
+    const { error } = await supabase.from("transactions").delete().eq("id", id).eq("user_id", userId);
+    if (error) {
+      setPendingDeleteIds((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      fetchTransactions();
+      showToast("Gagal menghapus transaksi", "error");
+      return;
+    }
+    await fetchTransactions();
+    setPendingDeleteIds((prev) => {
+      const next = new Set(prev);
+      next.delete(id);
+      return next;
+    });
   };
 
   const handleEdit = async (
@@ -170,15 +200,17 @@ export function Dashboard({ userId }: DashboardProps) {
       </header>
 
       {loading ? (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 p-4 sm:p-6 animate-pulse">
-              <div className="h-4 w-24 rounded bg-slate-200 dark:bg-slate-600" />
-              <div className="mt-3 h-8 w-32 rounded bg-slate-200 dark:bg-slate-600" />
-              <div className="mt-2 h-3 w-20 rounded bg-slate-100 dark:bg-slate-700" />
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+          <div className="rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 p-4 sm:p-6">
+            <div className="h-5 w-48 rounded-lg bg-slate-200 dark:bg-slate-600 animate-pulse mb-4" />
+            <SkeletonTable rows={6} />
+          </div>
+        </>
       ) : (
         <div className="animate-fade-in-up" style={{ animationDelay: "0.1s", opacity: 0, animationFillMode: "forwards" }}>
           <SummaryCards
@@ -197,7 +229,15 @@ export function Dashboard({ userId }: DashboardProps) {
       <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 p-4 sm:p-6 shadow-card transition-shadow hover:shadow-card-hover dark:hover:shadow-card-hover animate-fade-in-up" style={{ animationDelay: "0.15s", opacity: 0, animationFillMode: "forwards" }}>
           <h2 className="mb-4 text-base font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">Tambah Transaksi</h2>
-          <AddTransactionForm userId={userId} onSuccess={fetchTransactions} />
+          <AddTransactionForm
+          userId={userId}
+          onSuccess={fetchTransactions}
+          onOptimisticAdd={(t) => setOptimisticTransactions((prev) => [...prev, t])}
+          onOptimisticFail={(tempId) => {
+            setOptimisticTransactions((prev) => prev.filter((x) => x.id !== tempId));
+            showToast("Gagal menyimpan transaksi", "error");
+          }}
+        />
         </section>
         <section className="rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 p-4 sm:p-6 shadow-card transition-shadow hover:shadow-card-hover dark:hover:shadow-card-hover animate-fade-in-up" style={{ animationDelay: "0.2s", opacity: 0, animationFillMode: "forwards" }}>
           <h2 className="mb-2 text-base font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">Pengeluaran per Kategori</h2>
@@ -221,7 +261,7 @@ export function Dashboard({ userId }: DashboardProps) {
         <h2 className="mb-2 text-base font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">Daftar Transaksi</h2>
         <p className="mb-4 text-sm text-muted dark:text-slate-400">{periodLabel}</p>
         <TransactionTable
-          transactions={filteredByMonth}
+          transactions={displayedForTable}
           onDelete={handleDelete}
           onEdit={handleEdit}
         />

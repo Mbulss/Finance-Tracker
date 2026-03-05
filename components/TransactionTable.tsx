@@ -6,6 +6,8 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { EditTransactionModal } from "./EditTransactionModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
 import { SelectDropdown } from "./SelectDropdown";
+import { useToast } from "./ToastContext";
+import { EmptyState } from "./EmptyState";
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -22,30 +24,29 @@ export function TransactionTable({ transactions, onDelete, onEdit }: Transaction
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const { showToast } = useToast();
 
   const categories = Array.from(new Set(transactions.map((t) => t.category))).sort();
+  const searchDigits = search.replace(/\D/g, "");
   const filtered = transactions.filter((t) => {
+    const amountStr = String(Number(t.amount));
     const matchSearch =
       !search ||
       t.note?.toLowerCase().includes(search.toLowerCase()) ||
-      t.category.toLowerCase().includes(search.toLowerCase());
+      t.category.toLowerCase().includes(search.toLowerCase()) ||
+      (searchDigits.length > 0 && amountStr.includes(searchDigits));
     const matchCategory = categoryFilter === "all" || t.category === categoryFilter;
-    const matchType =
-      typeFilter === "all" || t.type === typeFilter;
+    const matchType = typeFilter === "all" || t.type === typeFilter;
     return matchSearch && matchCategory && matchType;
   });
 
   if (transactions.length === 0) {
     return (
-      <div className="rounded-2xl border-2 border-dashed border-border dark:border-slate-600 bg-gradient-to-b from-slate-50/80 to-slate-50/40 dark:from-slate-800/50 dark:to-slate-800/30 py-20 text-center">
-        <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10 dark:bg-primary/20 text-primary dark:text-sky-400">
-          <svg className="h-10 w-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-          </svg>
-        </div>
-        <p className="text-base font-medium text-slate-700 dark:text-slate-300">Belum ada transaksi di periode ini</p>
-        <p className="mt-2 text-sm text-muted dark:text-slate-500">Tambah dari form di atas atau kirim lewat Telegram bot.</p>
-      </div>
+      <EmptyState
+        icon="transactions"
+        title="Belum ada transaksi di periode ini"
+        description="Tambah dari form di atas atau kirim lewat Telegram bot."
+      />
     );
   }
 
@@ -82,7 +83,7 @@ export function TransactionTable({ transactions, onDelete, onEdit }: Transaction
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari catatan atau kategori..."
+              placeholder="Cari catatan, kategori, atau nominal..."
               className="w-full min-h-[48px] rounded-xl border border-border dark:border-slate-600 bg-card dark:bg-slate-800 dark:text-slate-100 py-3 pl-10 pr-4 text-base sm:text-sm placeholder:text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
             />
           </div>
@@ -126,20 +127,22 @@ export function TransactionTable({ transactions, onDelete, onEdit }: Transaction
                 <td className="max-w-[120px] truncate px-3 py-3 text-slate-600 dark:text-slate-400 sm:max-w-[200px] sm:px-4 sm:py-3.5">{t.note || "—"}</td>
                 <td className="px-2 py-3 text-right sm:px-4 sm:py-3.5">
                   <div className="flex items-center justify-end gap-0.5 sm:gap-1">
+                    {!t.id.startsWith("opt-") && (
                     <button
                       type="button"
                       onClick={() => setEditing(t)}
-                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-muted hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-600 dark:text-slate-400 dark:hover:text-primary"
+                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-muted hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-600 dark:text-slate-400 dark:hover:text-primary transition active:scale-95"
                       title="Edit"
                     >
                       <svg className="h-5 w-5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setDeleting(t)}
-                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-muted hover:bg-red-50 hover:text-expense dark:hover:bg-red-900/30 dark:text-slate-400 dark:hover:text-expense"
+                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-muted hover:bg-red-50 hover:text-expense dark:hover:bg-red-900/30 dark:text-slate-400 dark:hover:text-expense transition active:scale-95"
                       title="Hapus"
                     >
                       <svg className="h-5 w-5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -170,6 +173,7 @@ export function TransactionTable({ transactions, onDelete, onEdit }: Transaction
           setDeleteLoading(true);
           try {
             await Promise.resolve(onDelete(id));
+            showToast("Transaksi dihapus");
           } finally {
             setDeleting(null);
             setDeleteLoading(false);

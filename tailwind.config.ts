@@ -11,6 +11,7 @@ const config: Config = {
     extend: {
       fontFamily: {
         sans: ["var(--font-sans)", "system-ui", "sans-serif"],
+        mono: ["var(--font-mono)", "ui-monospace", "monospace"],
       },
       colors: {
         surface: "#f0f9ff",
@@ -37,6 +38,8 @@ const config: Config = {
         "fade-in": "fadeIn 0.4s ease-out forwards",
         "fade-in-up": "fadeInUp 0.5s ease-out forwards",
         "slide-in": "slideIn 0.3s ease-out",
+        "toast-in": "toastIn 0.35s ease-out forwards",
+        "count-up": "countUp 0.6s ease-out forwards",
       },
       keyframes: {
         fadeIn: {
@@ -50,6 +53,14 @@ const config: Config = {
         slideIn: {
           "0%": { opacity: "0", transform: "translateX(-8px)" },
           "100%": { opacity: "1", transform: "translateX(0)" },
+        },
+        toastIn: {
+          "0%": { opacity: "0", transform: "translateY(12px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        countUp: {
+          "0%": { opacity: "0", transform: "translateY(4px)" },
+          "100%": { opacity: "1", transform: "translateY(0)" },
         },
       },
     },

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseAdmin } from "@/lib/supabase/admin";
-import { parseMessage, parseAmountNote, toTransactionInsert } from "@/lib/telegram-parser";
+import { parseMessage, parseAmountNote, toTransactionInsert, parseAmount } from "@/lib/telegram-parser";
 import { CATEGORIES } from "@/lib/types";
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -23,7 +23,8 @@ CATEGORIES.income.forEach((c) => {
 const MAIN_KEYBOARD = {
   keyboard: [
     [{ text: "📈 Pemasukan" }, { text: "📉 Pengeluaran" }],
-    [{ text: "📖 Cara pakai" }, { text: "🖥 Dashboard" }],
+    [{ text: "🐷 Tabungan" }, { text: "🖥 Dashboard" }],
+    [{ text: "📖 Cara pakai" }],
   ],
   resize_keyboard: true,
   one_time_keyboard: false,
@@ -134,6 +135,65 @@ export async function POST(request: NextRequest) {
   // Resolve user: telegram_links dulu, fallback TELEGRAM_USER_ID
   const { data: link } = await supabase.from("telegram_links").select("user_id").eq("chat_id", chatId).single();
   const userId = link?.user_id ?? TELEGRAM_USER_ID ?? null;
+
+  // /tabungan atau "Tabungan" / "🐷 Tabungan" → cek saldo tabungan
+  const isTabunganCmd = /^\/tabungan$/i.test(text.trim()) || text.trim() === "🐷 Tabungan" || text.toLowerCase().trim() === "tabungan";
+  if (isTabunganCmd) {
+    if (!userId) {
+      await sendTelegramReply(chatId, LINK_INSTRUCTIONS);
+      return NextResponse.json({ ok: true });
+    }
+    const { data: entries } = await supabase
+      .from("savings_entries")
+      .select("type, amount")
+      .eq("user_id", userId);
+    const balance = (entries ?? []).reduce((sum, e) => sum + (e.type === "deposit" ? Number(e.amount) : -Number(e.amount)), 0);
+    const formatted = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(balance);
+    await sendMessageWithKeyboard(chatId, `🐷 <b>Saldo tabungan</b>\n\n${formatted}\n\nSetor: <code>setor 100k</code>\nTarik: <code>tarik 50k</code>`, MAIN_KEYBOARD);
+    return NextResponse.json({ ok: true });
+  }
+
+  // setor 100k / tarik 50k → tabungan (harus sudah link)
+  const setorMatch = text.match(/^setor\s+(.+)$/i);
+  const tarikMatch = text.match(/^tarik\s+(.+)$/i);
+  if (setorMatch || tarikMatch) {
+    if (!userId) {
+      await sendTelegramReply(chatId, LINK_INSTRUCTIONS);
+      return NextResponse.json({ ok: true });
+    }
+    const isSetor = !!setorMatch;
+    const rest = (setorMatch?.[1] ?? tarikMatch?.[1] ?? "").trim();
+    const amountNoteMatch = rest.match(/^([\d.,\s]+(?:rb[u]?|jt|juta|k)?)\s*(.*)$/i);
+    const amountStr = amountNoteMatch ? amountNoteMatch[1].trim() : rest;
+    const notePart = amountNoteMatch ? amountNoteMatch[2].trim() : "";
+    const amount = parseAmount(amountStr);
+    if (!amount || amount <= 0) {
+      await sendTelegramReply(chatId, "Nominal gak valid 😅 Contoh: <code>setor 100k</code> atau <code>tarik 50rb</code>");
+      return NextResponse.json({ ok: true });
+    }
+    if (!isSetor) {
+      const { data: entries } = await supabase.from("savings_entries").select("type, amount").eq("user_id", userId);
+      const balance = (entries ?? []).reduce((sum, e) => sum + (e.type === "deposit" ? Number(e.amount) : -Number(e.amount)), 0);
+      if (amount > balance) {
+        await sendTelegramReply(chatId, `Saldo tabungan kurang 😅 Saldo sekarang: ${new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(balance)}`);
+        return NextResponse.json({ ok: true });
+      }
+    }
+    const { error: err } = await supabase.from("savings_entries").insert({
+      user_id: userId,
+      type: isSetor ? "deposit" : "withdraw",
+      amount,
+      note: notePart || (isSetor ? "Setor dari bot" : "Tarik dari bot"),
+    });
+    if (err) {
+      await sendTelegramReply(chatId, "Gagal nyimpen 😅 " + err.message);
+      return NextResponse.json({ ok: true });
+    }
+    const action = isSetor ? "Setor" : "Tarik";
+    const formatted = new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(amount);
+    await sendMessageWithKeyboard(chatId, `${action} ${formatted} udah ke-catat 🐷`, MAIN_KEYBOARD);
+    return NextResponse.json({ ok: true });
+  }
 
   // Trigger bantuan: /start, /help, halo, hi, bantu, gimana, cara pakai, ?
   const lower = text.toLowerCase();
@@ -288,6 +348,7 @@ Ini bot buat catat pemasukan & pengeluaran kamu. Semua data masuk ke dashboard y
 <b>Cara pakai (singkat):</b>
 • Pilih <b>Pemasukan</b> atau <b>Pengeluaran</b> → kategori → kirim nominal (boleh <code>25k</code>, <code>500rb</code>, <code>1jt</code>).
 • Atau ketik langsung: <code>+500rb gaji</code> / <code>-25k kopi</code>
+• <b>Tabungan:</b> <code>/tabungan</code> cek saldo, <code>setor 100k</code> / <code>tarik 50k</code>
 
 Kalau mau liat grafik & riwayat lengkap → dashboard:\n<a href="${DASHBOARD_URL}">${DASHBOARD_URL}</a>
 

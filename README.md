@@ -22,8 +22,8 @@ npm install
 ### 2. Supabase
 
 1. Create a project at [supabase.com](https://supabase.com).
-2. In the SQL Editor, run the contents of `supabase/schema.sql` (includes table for Telegram category buttons).
-3. (Optional) Enable Realtime for `public.transactions` if you want live updates: Database → Replication → enable for `transactions`.
+2. In the SQL Editor, run the contents of `supabase/schema.sql` (includes table for Telegram category buttons). Untuk fitur **Tabungan**, jalankan juga `supabase/schema-tabungan.sql`. Untuk **celengan (multiple pots), target tabungan, dan pengingat setor**, jalankan `supabase/schema-tabungan-pots.sql`.
+3. (Optional) Enable Realtime for `public.transactions` and `public.savings_entries`, `public.savings_pots` if you want live updates: Database → Replication → enable for `transactions`.
 4. **Redirect URL (konfirmasi email & reset password):** Supabase Dashboard → Authentication → URL Configuration. Set **Site URL** ke URL production (e.g. `https://finance-tracker-gamma-livid.vercel.app`). Di **Redirect URLs** tambahkan `https://finance-tracker-gamma-livid.vercel.app/**` dan `http://localhost:3000/**` agar link konfirmasi email / reset password mengarah ke app kamu, bukan localhost.
 5. Copy **Project URL** and **anon key** from Settings → API. For the webhook, also copy **service_role** key (keep it secret).
 
@@ -74,6 +74,33 @@ Messages to the bot will be parsed and saved to the same `transactions` table.
 - `+500000 gaji` — income, 500000, note "gaji", category auto-detected (e.g. Salary)
 - `-25000 kopi` — expense, 25000, note "kopi", category e.g. Food
 - Multiple lines in one message are supported.
+
+**Tabungan (savings) via bot:**
+
+- `/tabungan` — balas dengan saldo tabungan saat ini
+- `setor 100k` / `setor 500rb` — setor ke tabungan (nominal boleh pakai rb, jt, k)
+- `tarik 50k` — tarik dari tabungan (validasi saldo)
+
+**Ringkasan mingguan:** Lihat [Setup cron](#setup-cron-ringkasan-mingguan) di bawah.
+
+---
+
+## Setup cron (ringkasan mingguan)
+
+Agar bot mengirim ringkasan mingguan (pemasukan/pengeluaran/saldo/tabungan) ke Telegram:
+
+1. **Vercel → Project → Settings → Environment Variables**
+   - Tambah variable: **Name** `CRON_SECRET`, **Value** bebas (mis. `rahasia-cron-kamu`). Simpan.
+2. **Deploy** (push ke repo atau redeploy). File `vercel.json` sudah berisi cron; Vercel akan memanggil `/api/cron/weekly-summary` dan mengirim header `Authorization: Bearer <CRON_SECRET>` otomatis.
+3. **Jadwal saat ini:** Setiap **Senin 08:00 UTC** (15:00 WIB). Ubah di `vercel.json` → `crons[0].schedule` jika mau (format: cron 5 kolom, timezone UTC).
+
+**Tes manual (tanpa tunggu Senin):** Panggil dari browser atau curl (ganti URL dan secret):
+
+```bash
+curl -H "Authorization: Bearer rahasia-cron-kamu" "https://domain-kamu.vercel.app/api/cron/weekly-summary"
+```
+
+Respon `{ "ok": true, "sent": 2 }` = 2 chat terhubung yang dapat pesan.
 
 ## Deployment (Vercel)
 

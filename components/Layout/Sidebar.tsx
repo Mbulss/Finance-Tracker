@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { TELEGRAM_BOT_URL, TELEGRAM_BOT_USERNAME } from "@/lib/constants";
+import { InstallPWA } from "@/components/InstallPWA";
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -77,6 +78,16 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
               Dashboard
             </Link>
             <Link
+              href="/tabungan"
+              onClick={onClose}
+              className={`flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${pathname === "/tabungan" ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary" : "text-muted hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
+            >
+              <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v1.5c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125h-.375m0-1.5h.375c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125H3.375" />
+              </svg>
+              Tabungan
+            </Link>
+            <Link
               href="/link-telegram"
               onClick={onClose}
               className={`flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${pathname === "/link-telegram" ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary" : "text-muted hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}
@@ -110,6 +121,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
             </Link>
           </nav>
           <div className="space-y-0.5 border-t border-border pt-4">
+            <InstallPWA onClose={onClose} />
             <Link
               href="/profile"
               onClick={onClose}
