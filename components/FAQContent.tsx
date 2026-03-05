@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { TELEGRAM_BOT_USERNAME } from "@/lib/constants";
 
 const FAQ_ITEMS = [
   {
     id: "apa-itu",
     question: "Apa itu Finance Tracker?",
     icon: "💰",
-    answer: "Finance Tracker adalah aplikasi untuk mencatat pemasukan dan pengeluaran pribadi. Kamu bisa input transaksi lewat dashboard web atau lewat bot Telegram. Data disimpan aman per akun dan bisa dilihat dalam bentuk ringkasan, grafik, serta tabel.",
+    answer: "Finance Tracker adalah aplikasi untuk mencatat pemasukan dan pengeluaran pribadi. Kamu bisa input transaksi lewat dashboard web atau lewat bot Telegram (@MbulssTracker_bot). Data disimpan aman per akun dan bisa dilihat dalam bentuk ringkasan, grafik, serta tabel.",
   },
   {
     id: "tambah-web",
@@ -19,19 +20,19 @@ const FAQ_ITEMS = [
     id: "link-telegram",
     question: "Bagaimana cara menghubungkan akun dengan Telegram?",
     icon: "🔗",
-    answer: "Buka menu Link Telegram di sidebar → klik \"Buat kode\" → copy perintah yang muncul (contoh: /link ABC123). Buka bot Finance Tracker di Telegram, kirim perintah itu. Bot akan konfirmasi \"Akun terhubung!\". Setelah itu, transaksi yang kamu input lewat bot akan masuk ke dashboard akun ini.",
+    answer: `Buka menu Link Telegram di sidebar → klik "Buat kode" → copy perintah yang muncul (contoh: /link ABC123). Buka bot @${TELEGRAM_BOT_USERNAME} di Telegram, kirim perintah itu. Bot akan konfirmasi "Akun terhubung!". Setelah itu, transaksi yang kamu input lewat bot akan masuk ke dashboard akun ini.`,
   },
   {
     id: "pakai-bot",
     question: "Bagaimana cara pakai bot Telegram?",
     icon: "📱",
-    answer: "Setelah akun terhubung, kirim /start di bot. Pilih \"Pemasukan\" atau \"Pengeluaran\" → pilih kategori dari tombol → ketik nominal (boleh pakai rb/jt, misal 25rb atau 1jt) dan catatan. Atau ketik langsung format: +50000 gaji atau -25rb kopi.",
+    answer: `Setelah akun terhubung, buka @${TELEGRAM_BOT_USERNAME} dan kirim /start. Pilih "Pemasukan" atau "Pengeluaran" → pilih kategori dari tombol → ketik nominal (boleh pakai rb/jt, misal 25rb atau 1jt) dan catatan. Atau ketik langsung format: +50000 gaji atau -25rb kopi.`,
   },
   {
     id: "ubah-password",
     question: "Bagaimana cara ubah password?",
     icon: "🔒",
-    answer: "Buka menu Profil di sidebar (di atas Keluar). Di section \"Ubah Password\", isi password baru dan konfirmasi, lalu klik \"Ubah password\". Password berhasil diubah akan muncul notifikasi hijau di atas form.",
+    answer: "Buka menu Profil di sidebar (di atas Keluar). Di section \"Ubah Password\", isi password lama (untuk konfirmasi), password baru, dan konfirmasi password baru, lalu klik \"Ubah password\". Notifikasi hijau akan muncul jika berhasil. Kalau lupa password lama, pakai \"Lupa password?\" di halaman login untuk dapat link reset lewat email.",
   },
   {
     id: "export",

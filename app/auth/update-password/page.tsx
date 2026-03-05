@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
-import { UpdatePasswordForm } from "./UpdatePasswordForm";
+import { UpdatePasswordForm } from "@/app/auth/update-password/UpdatePasswordForm";
 
 export const dynamic = "force-dynamic";
 
