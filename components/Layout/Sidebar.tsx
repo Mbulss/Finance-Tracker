@@ -86,6 +86,16 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
               </svg>
               Link Telegram
             </Link>
+            <Link
+              href="/link-telegram#otomatis"
+              onClick={onClose}
+              className="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-muted transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            >
+              <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Link otomatis
+            </Link>
             <a
               href={TELEGRAM_BOT_URL}
               target="_blank"

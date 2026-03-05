@@ -20,7 +20,13 @@ const FAQ_ITEMS = [
     id: "link-telegram",
     question: "Bagaimana cara menghubungkan akun dengan Telegram?",
     icon: "🔗",
-    answer: `Buka menu Link Telegram di sidebar → klik "Buat kode" → lalu klik tombol "Buka bot & ketuk Start — akun langsung terhubung". Link itu akan membuka bot; cukup ketuk Start di Telegram, akun otomatis ke-link. Bisa juga kirim manual /link KODE ke bot. Setelah terhubung, transaksi dari bot masuk ke dashboard.`,
+    answer: `Buka menu Link Telegram di sidebar. Ada dua cara:
+
+(1) Link otomatis — Paling gampang: buat kode, lalu klik "Buka bot & ketuk Start". Bot terbuka, ketuk Start, akun langsung terhubung. Catatan: Hanya bisa di aplikasi Telegram (HP/desktop), tidak di Telegram Web.
+
+(2) Link manual — Buat kode, lalu kirim /link KODE ke bot @${TELEGRAM_BOT_USERNAME}. Catatan: Bisa dipakai di Telegram Web maupun app, cocok kalau pakai browser.
+
+Kode berlaku 10 menit. Kalau bingung, buka halaman Link Telegram — kedua cara ada di sana dengan penjelasan lengkap.`,
   },
   {
     id: "pakai-bot",
@@ -98,7 +104,7 @@ export function FAQContent() {
               >
                 <div className="overflow-hidden">
                   <div className="border-t border-border dark:border-slate-600 bg-slate-50/80 dark:bg-slate-700/50 px-4 pb-4 pt-3 sm:px-5 sm:pb-5 sm:pt-4">
-                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{item.answer}</p>
+                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">{item.answer}</p>
                   </div>
                 </div>
               </div>
