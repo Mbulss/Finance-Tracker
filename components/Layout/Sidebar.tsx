@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { TELEGRAM_BOT_URL, TELEGRAM_BOT_USERNAME } from "@/lib/constants";
+import { openTelegramUrl } from "@/lib/utils";
 import { InstallPWA } from "@/components/InstallPWA";
 
 interface SidebarProps {
@@ -44,7 +45,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
           <div className="flex items-center justify-between px-2 py-4 lg:justify-start lg:gap-3">
             <div className="flex items-center gap-3">
               <img src="/logo.png" alt="" className="h-10 w-10 shrink-0 rounded-xl object-contain" />
-              <span className="text-lg font-bold tracking-tight text-slate-800 dark:text-slate-100">Finance</span>
+              <span className="text-lg font-bold tracking-tight text-slate-800 dark:text-slate-100">Finance Tracker</span>
             </div>
             <div className="flex items-center gap-1">
               <ThemeToggle />
@@ -97,7 +98,11 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
               href={TELEGRAM_BOT_URL}
               target="_blank"
               rel="noopener noreferrer"
-              onClick={onClose}
+              onClick={(e) => {
+                e.preventDefault();
+                openTelegramUrl(TELEGRAM_BOT_URL);
+                onClose?.();
+              }}
               className="flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-muted transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
             >
               <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
@@ -126,7 +131,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
               <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
-              Profil
+              Akun
             </Link>
             <button
               type="button"

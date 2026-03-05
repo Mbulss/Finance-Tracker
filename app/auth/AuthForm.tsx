@@ -14,8 +14,52 @@ function getAuthRedirectUrl(): string {
 
 const CALLBACK_ERROR_MSG: Record<string, string> = {
   missing_code: "Link tidak lengkap. Coba klik lagi dari email atau minta kirim ulang.",
-  invalid_code: "Link kedaluwarsa atau sudah dipakai. Coba daftar ulang atau minta link reset password lagi.",
+  invalid_code: "Link kedaluwarsa atau sudah dipakai. Gunakan Masuk (jika sudah punya akun) atau minta link baru lewat Daftar / Lupa password.",
 };
+
+/** Pesan error auth Supabase → teks Indonesia yang konsisten */
+function getFriendlyAuthError(err: unknown, context: "login" | "signup" | "forgot"): string {
+  const msg = err instanceof Error ? err.message : String(err ?? "Terjadi kesalahan.");
+  const code = typeof (err as { code?: string })?.code === "string" ? (err as { code: string }).code : "";
+  const lower = msg.toLowerCase();
+
+  // Rate limit (kirim email terlalu sering / coba login terlalu sering)
+  if (
+    code === "over_email_send_limit" ||
+    /rate limit|too many|terlalu banyak|try again in|1 hour|1 jam|429/i.test(msg) ||
+    lower.includes("hour") && /try again|tunggu|coba lagi/i.test(msg)
+  ) {
+    return "Terlalu banyak percobaan. Tunggu sekitar 1 jam lalu coba lagi.";
+  }
+
+  // Email sudah terdaftar (biasanya saat daftar)
+  if (
+    code === "user_already_exists" ||
+    /already registered|already exists|sudah terdaftar|sering digunakan|in use/i.test(lower)
+  ) {
+    return "Email ini sudah terdaftar. Silakan Masuk atau gunakan Lupa password.";
+  }
+
+  // Email belum dikonfirmasi (saat login)
+  if (code === "email_not_confirmed" || /email not confirmed|belum dikonfirmasi|confirm your email/i.test(lower)) {
+    return "Email belum dikonfirmasi. Cek inbox (dan folder spam) untuk link konfirmasi dari kami.";
+  }
+
+  // Kredensial salah (login)
+  if (
+    code === "invalid_credentials" ||
+    /invalid login|invalid credentials|email.*password|credentials/i.test(lower)
+  ) {
+    return "Email atau password salah. Cek lagi atau gunakan Lupa password.";
+  }
+
+  // Link/OTP kedaluwarsa
+  if (code === "otp_expired" || /expired|kedaluwarsa|invalid.*link/i.test(lower)) {
+    return "Link sudah kedaluwarsa. Minta link baru lewat Daftar ulang atau Lupa password.";
+  }
+
+  return msg || "Terjadi kesalahan. Coba lagi atau gunakan Lupa password.";
+}
 
 function getHashError(): string | null {
   if (typeof window === "undefined") return null;
@@ -31,10 +75,12 @@ function getHashError(): string | null {
 
 export function AuthForm({
   callbackError,
+  callbackErrorDetail,
   confirmed,
   passwordUpdated,
 }: {
   callbackError?: string | null;
+  callbackErrorDetail?: string | null;
   confirmed?: boolean;
   passwordUpdated?: boolean;
 }) {
@@ -46,15 +92,18 @@ export function AuthForm({
   const [isSignUp, setIsSignUp] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState(
-    passwordUpdated
-      ? "Password berhasil diubah. Silakan masuk dengan password baru."
-      : confirmed
-        ? "Email berhasil dikonfirmasi. Silakan masuk dengan email dan password yang kamu daftarkan."
-        : callbackError
-          ? CALLBACK_ERROR_MSG[callbackError] ?? "Terjadi kesalahan."
-          : ""
-  );
+  const getInitialMessage = () => {
+    if (passwordUpdated) return "Password berhasil diubah. Silakan masuk dengan password baru.";
+    if (confirmed) return "Email berhasil dikonfirmasi. Silakan masuk dengan email dan password yang kamu daftarkan.";
+    if (callbackError) {
+      if (callbackError === "invalid_code" && callbackErrorDetail === "expired") {
+        return "Link sudah kedaluwarsa (link hanya berlaku ±1 jam). Minta link baru lewat Lupa password atau Daftar ulang.";
+      }
+      return CALLBACK_ERROR_MSG[callbackError] ?? "Terjadi kesalahan.";
+    }
+    return "";
+  };
+  const [message, setMessage] = useState(getInitialMessage());
   const router = useRouter();
   const supabase = createClient();
 
@@ -99,13 +148,8 @@ export function AuthForm({
         router.refresh();
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Terjadi kesalahan.";
-      const isRateLimit = /rate limit|too many|terlalu banyak/i.test(msg);
-      setMessage(
-        isRateLimit
-          ? "Terlalu banyak permintaan kirim email. Tunggu 5–10 menit lalu coba lagi."
-          : msg
-      );
+      const context = isForgotPassword ? "forgot" : isSignUp ? "signup" : "login";
+      setMessage(getFriendlyAuthError(err, context));
     } finally {
       setLoading(false);
     }

@@ -21,8 +21,11 @@ export async function GET(request: NextRequest) {
   const { error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
-    console.error("[auth/callback]", error.message);
-    return NextResponse.redirect(new URL("/auth?error=invalid_code", request.url));
+    console.error("[auth/callback]", error.message, error.code);
+    const isExpired = /expired|otp_expired/i.test(error.message) || error.code === "otp_expired";
+    const params = new URLSearchParams({ error: "invalid_code" });
+    if (isExpired) params.set("detail", "expired");
+    return NextResponse.redirect(new URL(`/auth?${params.toString()}`, request.url));
   }
 
   if (type === "recovery") {

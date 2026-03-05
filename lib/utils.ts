@@ -48,3 +48,19 @@ export function startOfMonth(d: Date): Date {
 export function endOfMonth(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
 }
+
+/**
+ * Buka URL Telegram (t.me/...) sehingga dari PWA/standalone bisa langsung buka app Telegram.
+ * Di mode standalone pakai location.href agar OS menyerahkan ke app; di browser biasa pakai window.open.
+ */
+export function openTelegramUrl(url: string): void {
+  if (typeof window === "undefined") return;
+  const isPWA =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    (navigator as Navigator & { standalone?: boolean }).standalone === true;
+  if (isPWA) {
+    window.location.href = url;
+  } else {
+    window.open(url, "_blank", "noopener,noreferrer");
+  }
+}

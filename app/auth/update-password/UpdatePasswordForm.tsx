@@ -33,10 +33,15 @@ export function UpdatePasswordForm() {
       router.push("/auth?password_updated=1");
       router.refresh();
     } catch (err: unknown) {
-      setMessage({
-        type: "error",
-        text: err instanceof Error ? err.message : "Gagal mengubah password.",
-      });
+      const msg = err instanceof Error ? err.message : "Gagal mengubah password.";
+      const code = typeof (err as { code?: string })?.code === "string" ? (err as { code: string }).code : "";
+      let text = msg;
+      if (code === "over_email_send_limit" || /rate limit|too many|1 hour|try again/i.test(msg)) {
+        text = "Terlalu banyak percobaan. Tunggu sekitar 1 jam lalu coba lagi.";
+      } else if (/weak password|password.*weak|terlalu lemah/i.test(msg)) {
+        text = "Password terlalu lemah. Gunakan minimal 6 karakter dan kombinasi huruf/angka.";
+      }
+      setMessage({ type: "error", text });
       setLoading(false);
     }
   }

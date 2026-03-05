@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { TELEGRAM_BOT_URL, TELEGRAM_BOT_USERNAME } from "@/lib/constants";
+import { openTelegramUrl } from "@/lib/utils";
 
 export function LinkTelegram() {
   const [code, setCode] = useState<string | null>(null);
@@ -58,7 +59,7 @@ export function LinkTelegram() {
               const res = await fetch("/api/telegram/link-code", { method: "POST" });
               const data = await res.json();
               if (!res.ok) throw new Error(data.error || "Gagal");
-              window.open(`${TELEGRAM_BOT_URL}?start=${data.code}`, "_blank", "noopener,noreferrer");
+              openTelegramUrl(`${TELEGRAM_BOT_URL}?start=${data.code}`);
             } catch (e) {
               setError(e instanceof Error ? e.message : "Gagal");
             } finally {
