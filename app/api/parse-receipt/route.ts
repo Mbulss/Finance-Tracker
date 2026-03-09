@@ -1,7 +1,78 @@
 import { NextRequest, NextResponse } from "next/server";
 
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const GROQ_API_KEY = process.env.GROQ_API_KEY;
 const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+
+interface AIChatResult { content: string; provider: string }
+
+async function callAIWithFallback(
+  systemPrompt: string,
+  userMsg: string,
+  maxTokens = 120
+): Promise<AIChatResult | null> {
+  const messages = [
+    { role: "system", content: systemPrompt },
+    { role: "user", content: userMsg },
+  ];
+
+  // 1) Gemini Flash
+  if (GEMINI_API_KEY) {
+    try {
+      const res = await fetch(
+        "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${GEMINI_API_KEY}` },
+          body: JSON.stringify({ model: "gemini-2.5-flash", messages, max_tokens: maxTokens, temperature: 0 }),
+        }
+      );
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const c = (data?.choices?.[0]?.message?.content ?? "").trim();
+        if (c) return { content: c, provider: "gemini" };
+      } else console.log(`[parse-receipt] Gemini error ${res.status}`);
+    } catch (e) { console.log("[parse-receipt] Gemini failed:", e); }
+  }
+
+  // 2) Groq
+  if (GROQ_API_KEY) {
+    try {
+      const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${GROQ_API_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "llama-3.3-70b-versatile", messages, max_tokens: maxTokens, temperature: 0 }),
+      });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const c = (data?.choices?.[0]?.message?.content ?? "").trim();
+        if (c) return { content: c, provider: "groq" };
+      } else console.log(`[parse-receipt] Groq error ${res.status}`);
+    } catch (e) { console.log("[parse-receipt] Groq failed:", e); }
+  }
+
+  // 3) OpenRouter
+  if (OPENROUTER_API_KEY) {
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${OPENROUTER_API_KEY}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost",
+        },
+        body: JSON.stringify({ model: "openrouter/auto", messages, max_tokens: maxTokens, temperature: 0 }),
+      });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        const c = (data?.choices?.[0]?.message?.content ?? "").trim();
+        if (c) return { content: c, provider: "openrouter" };
+      } else console.log(`[parse-receipt] OpenRouter error ${res.status}`);
+    } catch (e) { console.log("[parse-receipt] OpenRouter failed:", e); }
+  }
+
+  return null;
+}
 
 /* ─── Parse angka IDR: handle kedua format ─── */
 // Indonesia: "40.000,00" → 40000  |  Internasional: "40,000.00" → 40000
@@ -344,9 +415,9 @@ note = nama toko/restoran. Jika tidak ada, tulis nama item utama. BUKAN alamat, 
 category: Food/Transport/Shopping/Bills/Health/Entertainment/Other (expense)`;
 
 export async function POST(request: NextRequest) {
-  if (!OPENROUTER_API_KEY) {
+  if (!GEMINI_API_KEY && !GROQ_API_KEY && !OPENROUTER_API_KEY) {
     return NextResponse.json(
-      { error: "OPENROUTER_API_KEY tidak di-set. Dapatkan gratis di https://openrouter.ai/keys" },
+      { error: "Belum ada API key AI. Set GEMINI_API_KEY, GROQ_API_KEY, atau OPENROUTER_API_KEY." },
       { status: 503 }
     );
   }
@@ -371,44 +442,23 @@ export async function POST(request: NextRequest) {
       ? `Amount=${hints.totalAmount}. Merchant="${merchantInfo}". Tentukan category. Perbaiki note jadi nama toko/restoran/item saja.\n\n${text.slice(0, 3000)}`
       : `Cari total akhir (bukan subtotal) dan nama toko/restoran.\n\n${text.slice(0, 4000)}`;
 
-    const res = await fetch(OPENROUTER_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${OPENROUTER_API_KEY}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL ?? "https://localhost",
-      },
-      body: JSON.stringify({
-        model: "openrouter/free",
-        messages: [
-          { role: "system", content: SYSTEM_PROMPT },
-          { role: "user", content: userMsg },
-        ],
-        max_tokens: 120,
-        temperature: 0,
-      }),
-    });
+    const result = await callAIWithFallback(SYSTEM_PROMPT, userMsg, 120);
 
-    if (res.ok) {
-      const data = await res.json().catch(() => ({}));
-      const raw = (data?.choices?.[0]?.message?.content ?? "").trim();
-      console.log("[parse-receipt] AI raw:", raw);
-
-      if (raw) {
-        let jsonStr = raw;
-        const b1 = jsonStr.indexOf("{");
-        const b2 = jsonStr.lastIndexOf("}");
-        if (b1 !== -1 && b2 > b1) jsonStr = jsonStr.slice(b1, b2 + 1);
-        try {
-          const parsed = JSON.parse(jsonStr);
-          if (typeof parsed.category === "string") aiCategory = parsed.category;
-          if (typeof parsed.note === "string" && parsed.note.trim()) aiNote = parsed.note.trim();
-          if (!hints.totalAmount && typeof parsed.amount !== "undefined") {
-            const n = typeof parsed.amount === "number" ? parsed.amount : parseInt(String(parsed.amount).replace(/[.,\s]/g, ""), 10);
-            if (!Number.isNaN(n) && n >= 100 && n <= 100_000_000) hints.totalAmount = n;
-          }
-        } catch { /* ignore */ }
-      }
+    if (result) {
+      console.log(`[parse-receipt] ${result.provider} raw:`, result.content);
+      let jsonStr = result.content;
+      const b1 = jsonStr.indexOf("{");
+      const b2 = jsonStr.lastIndexOf("}");
+      if (b1 !== -1 && b2 > b1) jsonStr = jsonStr.slice(b1, b2 + 1);
+      try {
+        const parsed = JSON.parse(jsonStr);
+        if (typeof parsed.category === "string") aiCategory = parsed.category;
+        if (typeof parsed.note === "string" && parsed.note.trim()) aiNote = parsed.note.trim();
+        if (!hints.totalAmount && typeof parsed.amount !== "undefined") {
+          const n = typeof parsed.amount === "number" ? parsed.amount : parseInt(String(parsed.amount).replace(/[.,\s]/g, ""), 10);
+          if (!Number.isNaN(n) && n >= 100 && n <= 100_000_000) hints.totalAmount = n;
+        }
+      } catch { /* ignore */ }
     }
   } catch (e) {
     console.error("[parse-receipt] AI error:", e);

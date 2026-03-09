@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Sidebar } from "./Sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { ChatBot } from "@/components/ChatBot";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -10,6 +11,7 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   return (
     <div className="min-h-screen bg-mesh">
@@ -30,8 +32,9 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
           <span className="font-bold tracking-tight text-slate-800 dark:text-slate-100 truncate">Finance Tracker</span>
           <div className="ml-auto"><ThemeToggle /></div>
         </header>
-        <div className="p-4 sm:p-6 lg:p-8 pb-[max(1rem,env(safe-area-inset-bottom))]">{children}</div>
+        <div key={refreshKey} className="p-4 sm:p-6 lg:p-8 pb-[max(1rem,env(safe-area-inset-bottom))]">{children}</div>
       </main>
+      <ChatBot onTransactionAdded={() => setRefreshKey((k) => k + 1)} />
     </div>
   );
 }

@@ -40,6 +40,7 @@ const config: Config = {
         "slide-in": "slideIn 0.3s ease-out",
         "toast-in": "toastIn 0.35s ease-out forwards",
         "count-up": "countUp 0.6s ease-out forwards",
+        "chat-in": "chatIn 0.2s ease-out forwards",
       },
       keyframes: {
         fadeIn: {
@@ -61,6 +62,10 @@ const config: Config = {
         countUp: {
           "0%": { opacity: "0", transform: "translateY(4px)" },
           "100%": { opacity: "1", transform: "translateY(0)" },
+        },
+        chatIn: {
+          "0%": { opacity: "0", transform: "scale(0.95) translateY(8px)" },
+          "100%": { opacity: "1", transform: "scale(1) translateY(0)" },
         },
       },
     },
