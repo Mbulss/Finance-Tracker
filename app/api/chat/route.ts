@@ -110,29 +110,45 @@ async function tryOpenRouter(messages: ChatMessage[]): Promise<ProviderResult | 
 }
 
 const FAQ_KNOWLEDGE = `
-Cara tambah transaksi web: Dashboard → form "Tambah Transaksi" → pilih tipe, kategori, nominal, catatan → Simpan.
-Cara tambah dari foto: Dashboard → "Tambah dari foto dengan AI" → seret/ketuk foto struk → AI isi otomatis → cek lalu Simpan.
-Link Telegram: Sidebar → Link Telegram → buat kode → klik "Buka bot & ketuk Start" (otomatis) atau kirim /link KODE ke bot (manual). Kode 10 menit.
-Bot Telegram: Kirim /start → pilih Pemasukan/Pengeluaran → pilih kategori → ketik nominal. Atau format: +50000 gaji, -25rb kopi.
-Ubah password: Sidebar → Akun → Ubah Password. Lupa? Pakai "Lupa password?" di login.
-Export CSV: Dashboard → filter bulan → klik "Export CSV".
-Kategori expense: Food, Transport, Shopping, Bills, Health, Entertainment, Other.
-Kategori income: Salary, Freelance, Investment, Gift, Other.
-Install PWA: Sidebar → "Install aplikasi" (jika browser support).
-Tabungan: Sidebar → Tabungan → buat pot tabungan, atur target, setor/tarik.
+**Transaksi & Dashboard**
+- Tambah transaksi web: Dashboard → form "Tambah Transaksi" → tipe (Pemasukan/Pengeluaran), kategori, nominal, catatan → Simpan.
+- Tambah dari foto: Dashboard → "Tambah dari foto dengan AI" → upload foto struk/bukti transfer → AI isi otomatis → cek → Simpan.
+- Export CSV: Dashboard → filter bulan/semua → tombol "Export CSV".
+- Kategori pengeluaran: Food, Transport, Shopping, Bills, Health, Entertainment, Other.
+- Kategori pemasukan: Salary, Freelance, Investment, Gift, Other.
+
+**Telegram**
+- Link akun: Sidebar → Link Telegram → buat kode → "Buka bot & ketuk Start" (otomatis) atau kirim /link KODE ke bot (manual). Kode 10 menit.
+- Bot: /start → pilih Pemasukan/Pengeluaran → kategori → nominal. Atau ketik: +50000 gaji, -25rb kopi, setor 100rb, tarik 50k.
+- Tabungan di bot: /tabungan cek saldo; setor 100rb / tarik 50k. Pengingat setor bisa diatur di halaman Tabungan (kirim ke Telegram tiap hari).
+
+**Akun & Lainnya**
+- Ubah password: Sidebar → Akun → Ubah Password. Lupa? "Lupa password?" di halaman login.
+- Install app (PWA): Sidebar → "Install aplikasi" kalau browser support.
+- FAQ: Sidebar → FAQ untuk panduan lengkap.
+
+**Tabungan (uang dingin)**
+- Sidebar → Tabungan. Ada kartu Saldo total, Total Setor, Total Tarik (hanya dari setor/tarik riil, bukan pindah uang).
+- Celengan: pot per tujuan (Umum, Dana darurat, dll). Klik "+ Tambah celengan" → isi Nama, Target (Rp) wajib, Foto opsional (JPEG/PNG/GIF max 3MB, GIF tetap gerak), Deskripsi opsional → Simpan. Edit lewat ikon pensil (nama, target, foto, deskripsi).
+- Setor/Tarik: pilih celengan, pilih Setor atau Tarik, isi jumlah dan catatan opsional.
+- Pindahkan uang: pindah antar celengan tanpa tarik dulu (Dari → Ke, ada tombol tukar). Entri pindah tidak muncul di riwayat; total setor/tarik di atas juga tidak termasuk pindah.
+- Riwayat: tabel setor/tarik (bisa edit/hapus). Pengingat setor: aktifkan di section Pengingat, pilih hari, bisa dikirim ke Telegram.
 `.trim();
 
 function buildSystemPrompt(financialContext: string) {
   return `Kamu adalah Cike, asisten keuangan pribadi di aplikasi Finance Tracker. Kamu diciptakan oleh **Mbulss**.
 
+KONTEKS & BATASAN (PENTING):
+- Kamu HANYA boleh bahas: Finance Tracker (cara pakai app), keuangan user (transaksi, tabungan, tips keuangan), dan hal yang relevan dengan itu.
+- Kalau user nanya topik di luar itu (politik, game, gosip, resep, olahraga, dll.): jawab santai dan gaul bahwa kamu cuma bisa bantu soal app dan keuangan. Contoh: "Waduh itu mah kuota ku habis di luar keuangan wkwk. Aku paling jago urusan Finance Tracker sama duit kamu aja sih — mau cek saldo, tips nabung, atau cara pakai fitur apa gitu? 😄"
+- Jangan mengada-ada fitur atau info yang tidak ada di PANDUAN APP di bawah. Kalau ga yakin, arahkan ke menu FAQ atau cek di app.
+
 KEPRIBADIAN:
-- Kamu itu santai, asik, dan kayak temen ngobrol — bukan robot
-- Pakai bahasa Indonesia sehari-hari, boleh slang dikit (nih, nih ya, cuss, mantap, gas, santuy, wkwk)
-- Gunakan emoji secukupnya biar hidup, tapi jangan berlebihan
-- Kalau user curhat soal keuangan, respons empatis dulu sebelum kasih saran
-- Sesekali kasih semangat atau pujian kalau keuangan user bagus
-- Kalau ditanya "siapa yang buat kamu" atau "siapa penciptamu", jawab "Aku dibuat sama **Mbulss** 😎"
-- Kalau ditanya "siapa terry/teri/ikanpepek/epipin/evin/epin", jawab "Dia Adalah **Darksystem dan Hama** Dunia" 
+- Santai, gaul, kayak temen Gen Z — pakai bahasa sehari-hari (gas, mantap, siap, wkwk, nggak papa, oke, yuk, gitu, dll.). Jangan kaku atau kayak robot.
+- Pinter: jawab to the point, pakai data user kalau ada. Kasih saran yang actionable.
+- Emoji secukupnya (jangan berlebihan). Kalau user curhat keuangan, empatis dulu baru kasih saran. Puji atau semangatin kalau keuangannya oke.
+- Kalau ditanya "siapa yang buat kamu" / "penciptamu": jawab "Aku dibuat sama **Mbulss** 😎"
+- Kalau ditanya "siapa terry/teri/ikanpepek/epipin/evin/epin": jawab "Dia Adalah **Darksystem dan Hama** Dunia"
 
 FORMAT JAWABAN:
 - Gunakan **bold** untuk angka penting dan label (contoh: **Rp1.500.000**)
@@ -223,6 +239,45 @@ async function getFinancialContext(supabase: Awaited<ReturnType<typeof createSer
 
   const monthName = now.toLocaleDateString("id-ID", { month: "long", year: "numeric" });
 
+  // Tabungan: saldo total + celengan (hanya entri non-transfer untuk total setor/tarik)
+  let savingsContext = "";
+  try {
+    const { data: entries } = await supabase
+      .from("savings_entries")
+      .select("type, amount, is_transfer, pot_id")
+      .eq("user_id", userId);
+    const { data: pots } = await supabase
+      .from("savings_pots")
+      .select("id, name, target_amount")
+      .eq("user_id", userId)
+      .order("sort_order");
+
+    if (entries?.length) {
+      const totalBalance = entries.reduce((s, e) => s + (e.type === "deposit" ? Number(e.amount) : -Number(e.amount)), 0);
+      const realEntries = entries.filter((e) => !e.is_transfer);
+      const totalSetor = realEntries.filter((e) => e.type === "deposit").reduce((s, e) => s + Number(e.amount), 0);
+      const totalTarik = realEntries.filter((e) => e.type === "withdraw").reduce((s, e) => s + Number(e.amount), 0);
+      const byPot: Record<string, number> = {};
+      entries.forEach((e) => {
+        const key = e.pot_id ?? "__umum__";
+        byPot[key] = (byPot[key] ?? 0) + (e.type === "deposit" ? Number(e.amount) : -Number(e.amount));
+      });
+      const potLines = (pots ?? []).map((p) => {
+        const bal = byPot[p.id] ?? 0;
+        const target = p.target_amount != null ? Number(p.target_amount) : null;
+        const pct = target && target > 0 ? Math.min(100, (bal / target) * 100).toFixed(0) : "-";
+        return `${p.name}: Rp${bal.toLocaleString("id-ID")}${target ? ` (${pct}% dari target)` : ""}`;
+      });
+      const umum = byPot["__umum__"] ?? 0;
+      savingsContext = `
+Tabungan — Saldo total: Rp${totalBalance.toLocaleString("id-ID")}. Total setor (riil): Rp${totalSetor.toLocaleString("id-ID")}. Total tarik (riil): Rp${totalTarik.toLocaleString("id-ID")}.
+Umum: Rp${umum.toLocaleString("id-ID")}.
+${potLines.length ? "Celengan: " + potLines.join(". ") : ""}`.trim();
+    }
+  } catch {
+    savingsContext = "Tabungan: data tidak di-load.";
+  }
+
   return `Bulan: ${monthName}
 Pemasukan bulan ini: Rp${income.toLocaleString("id-ID")} (bulan lalu: Rp${prevIncome.toLocaleString("id-ID")})
 Pengeluaran bulan ini: Rp${expense.toLocaleString("id-ID")} (bulan lalu: Rp${prevExpense.toLocaleString("id-ID")})
@@ -230,7 +285,8 @@ Saldo bersih: Rp${(income - expense).toLocaleString("id-ID")}
 Jumlah transaksi: ${txs.length}
 Breakdown pengeluaran: ${catBreakdown || "belum ada"}
 5 transaksi terakhir:
-${recent || "belum ada"}`;
+${recent || "belum ada"}
+${savingsContext ? "\n" + savingsContext : ""}`;
 }
 
 export async function POST(request: NextRequest) {

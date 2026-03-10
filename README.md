@@ -94,6 +94,21 @@ Messages to the bot will be parsed and saved to the same `transactions` table.
 
 ---
 
+## Checklist Tabungan (apa yang harus ada)
+
+Supaya fitur Tabungan (celengan, setor/tarik, pengingat setor ke Telegram) jalan lengkap:
+
+| Yang dicek | Keterangan |
+|------------|------------|
+| **Supabase – SQL** | Sudah jalankan `supabase/schema-tabungan.sql` dan `supabase/schema-tabungan-pots.sql` di SQL Editor? (Poin 2 di [Setup](#2-supabase) sudah menyebut ini.) |
+| **Env** | Tidak perlu env baru. Tabungan pakai Supabase + `TELEGRAM_BOT_TOKEN` + `CRON_SECRET` yang sama dengan fitur lain. |
+| **Cron pengingat** | `vercel.json` sudah berisi cron `/api/cron/savings-reminder` (jalan tiap hari). Setelah deploy, Vercel akan panggil otomatis. Pastikan `CRON_SECRET` sudah di-set di Vercel. |
+| **User** | Untuk **pengingat setor ke Telegram**: user harus **Link Telegram** dulu (sidebar → Link Telegram), lalu di halaman **Tabungan** aktifkan "Kirim pengingat ke Telegram" dan pilih hari. |
+
+Kalau tabel tabungan/celengan/pengingat sudah di-apply di Supabase dan cron + env sudah set, tidak ada yang perlu ditambah khusus untuk tabungan.
+
+---
+
 ## Setup cron (ringkasan mingguan)
 
 Agar bot mengirim ringkasan mingguan (pemasukan/pengeluaran/saldo/tabungan) ke Telegram:
@@ -110,6 +125,8 @@ curl -H "Authorization: Bearer rahasia-cron-kamu" "https://domain-kamu.vercel.ap
 ```
 
 Respon `{ "ok": true, "sent": 2 }` = 2 chat terhubung yang dapat pesan.
+
+**Pengingat setor tabungan:** Cron harian memanggil `/api/cron/savings-reminder` setiap hari (jadwal di `vercel.json`, default **02:00 UTC** / 09:00 WIB). User yang mengaktifkan "Pengingat setor" di halaman Tabungan dan memilih hari tertentu akan dapat pesan di Telegram di hari itu (isi: saldo tabungan + ajakan setor). Pakai `CRON_SECRET` yang sama. Tes manual: `curl -H "Authorization: Bearer <CRON_SECRET>" "https://domain-kamu.vercel.app/api/cron/savings-reminder"`.
 
 ## Deployment (Vercel)
 

@@ -68,6 +68,20 @@ Tips agar hasil lebih akurat:
     icon: "📂",
     answer: "Pemasukan: Salary, Freelance, Investment, Gift, Other. Pengeluaran: Food, Transport, Shopping, Bills, Health, Entertainment, Other. Semua kategori ini bisa dipilih baik di web maupun di bot Telegram.",
   },
+  {
+    id: "tabungan",
+    question: "Apa itu Tabungan dan cara pakainya?",
+    icon: "🐷",
+    answer: `Tabungan di Finance Tracker adalah fitur "uang dingin" terpisah dari pemasukan/pengeluaran harian.
+
+• Saldo di atas = total uang tabungan kamu (setor minus tarik).
+
+• Celengan = bagi per tujuan: Umum, Dana darurat, Liburan, dll. Kamu bisa set target per celengan dan lihat progresnya.
+
+• Setor / Tarik = catat setoran atau penarikan uang ke/dari tabungan. Pindahkan uang = pindah antar celengan (mis. dari Umum ke Dana darurat) tanpa tarik dulu — saldo total tetap sama.
+
+• Di Telegram (kalau akun sudah di-link): /tabungan untuk cek saldo, setor 100rb atau tarik 50k untuk setor/tarik. Pengingat setor bisa dikirim ke Telegram tiap hari yang kamu pilih (atur di halaman Tabungan).`,
+  },
 ];
 
 export function FAQContent() {

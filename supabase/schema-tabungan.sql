@@ -7,7 +7,8 @@ CREATE TABLE IF NOT EXISTS public.savings_entries (
   type TEXT NOT NULL CHECK (type IN ('deposit', 'withdraw')),
   amount DECIMAL(15, 2) NOT NULL CHECK (amount > 0),
   note TEXT DEFAULT '',
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  is_transfer BOOLEAN NOT NULL DEFAULT false
 );
 
 CREATE INDEX IF NOT EXISTS idx_savings_entries_user_created
@@ -22,6 +23,10 @@ CREATE POLICY "Users can view own savings_entries"
 CREATE POLICY "Users can insert own savings_entries"
   ON public.savings_entries FOR INSERT
   WITH CHECK (auth.uid()::text = user_id);
+
+CREATE POLICY "Users can update own savings_entries"
+  ON public.savings_entries FOR UPDATE
+  USING (auth.uid()::text = user_id);
 
 CREATE POLICY "Users can delete own savings_entries"
   ON public.savings_entries FOR DELETE

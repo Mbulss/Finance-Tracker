@@ -8,7 +8,9 @@ CREATE TABLE IF NOT EXISTS public.savings_pots (
   name TEXT NOT NULL,
   target_amount DECIMAL(15, 2) DEFAULT NULL,
   sort_order INT NOT NULL DEFAULT 0,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  photo TEXT,
+  description TEXT
 );
 
 CREATE INDEX IF NOT EXISTS idx_savings_pots_user ON public.savings_pots (user_id, sort_order);

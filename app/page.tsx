@@ -13,7 +13,9 @@ export default async function Home() {
 
   return (
     <DashboardLayout>
-      <Dashboard userId={user.id} />
+      <div className="space-y-6">
+        <Dashboard userId={user.id} />
+      </div>
     </DashboardLayout>
   );
 }

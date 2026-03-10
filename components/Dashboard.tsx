@@ -157,7 +157,7 @@ export function Dashboard({ userId }: DashboardProps) {
     hour < 12 ? "Selamat pagi" : hour < 18 ? "Selamat siang" : "Selamat malam";
 
   return (
-    <div className="mx-auto max-w-6xl space-y-5 sm:space-y-8 px-0 sm:px-0">
+    <div className="mx-auto max-w-6xl space-y-6">
       <header className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between animate-fade-in-up">
         <div className="flex flex-wrap items-start gap-3 min-w-0">
           <div className="min-w-0">
