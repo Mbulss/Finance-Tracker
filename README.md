@@ -1,145 +1,169 @@
 # Finance Tracker
 
-A modern personal finance tracker with a web dashboard and Telegram bot. Add transactions manually or by sending messages like `-25000 kopi` or `+500000 gaji`. **Bisa dipakai di mobile** — buka URL app di browser HP; layout responsif dan ada menu sidebar yang bisa dibuka/tutup.
+Aplikasi **pencatat keuangan pribadi** yang modern: catat pemasukan & pengeluaran lewat **web** atau **Telegram**, lihat ringkasan & grafik, kelola **tabungan (celengan)**, dan dapat bantuan dari **AI asisten (Cike AI)**. Bisa dipakai di desktop dan mobile (layout responsif, PWA-ready).
 
-## Tech Stack
+---
+
+## ✨ Fitur
+
+| Fitur | Keterangan |
+|-------|------------|
+| **Dashboard** | Ringkasan bulanan (total pemasukan, pengeluaran, saldo), grafik pie pengeluaran per kategori, grafik bar per bulan, tabel transaksi dengan filter bulan & pagination. |
+| **Tambah transaksi** | Input manual (tipe, kategori, nominal, catatan). Kategori: Pemasukan (Salary, Freelance, Investment, Gift, Other) dan Pengeluaran (Food, Transport, Shopping, Bills, Health, Entertainment, Other). |
+| **Tambah dari foto (AI)** | Upload foto struk atau bukti transfer; AI baca nominal, kategori, dan nama toko/item lalu mengisi form. Cukup cek dan simpan. |
+| **Edit & hapus** | Setiap transaksi bisa diedit atau dihapus dari tabel di dashboard. |
+| **Tabungan (Celengan)** | Fitur tabungan terpisah: buat banyak celengan (Umum, Dana darurat, Liburan, dll), set target per celengan, setor/tarik, pindah uang antar celengan. Riwayat setor/tarik, edit entri, dan ringkasan total setor/tarik. Opsional: foto & deskripsi per celengan. |
+| **Pengingat setor** | Jadwalkan pengingat setor tabungan ke Telegram per hari (misalnya setiap Senin). |
+| **Telegram bot** | Kirim pesan seperti `+500000 gaji` atau `-25rb kopi` untuk catat transaksi; `/tabungan` cek saldo; `setor 100k` / `tarik 50k` untuk tabungan. Setelah akun di-link, bot pakai data kamu. |
+| **Link Telegram** | Multi-user: setiap user daftar di web, lalu hubungkan akun dengan bot lewat kode (menu Link Telegram). |
+| **Cike AI (chatbot)** | Asisten keuangan di dalam app: tanya ringkasan, tips, cara export, dll. Fokus konteks keuangan & aplikasi saja. |
+| **Export CSV** | Unduh data transaksi (sesuai filter bulan) untuk Excel/Sheets. |
+| **Ringkasan mingguan** | Cron mengirim ringkasan mingguan (pemasukan/pengeluaran/saldo/tabungan) ke Telegram. |
+| **Tema gelap** | Dark mode didukung. |
+| **Mobile-friendly** | Layout responsif; chat panel menyesuaikan saat keyboard terbuka (tanpa gap). |
+
+---
+
+## 🛠 Tech stack
 
 - **Next.js 14** (App Router)
 - **React** + **TypeScript**
 - **TailwindCSS**
-- **Supabase** (Database + Auth)
-- **Recharts** (Pie & Bar charts)
-- **Vercel** (deployment)
+- **Supabase** (Auth, Database, Realtime)
+- **Recharts** (grafik)
+- **AI**: Gemini / Groq / OpenRouter (parsing struk & chatbot)
+- **Vercel** (deployment & cron)
 
-## Setup
+---
 
-### 1. Install dependencies
+## 📋 Prasyarat
+
+- **Node.js** 18+
+- Akun **Supabase** (gratis)
+- **Telegram Bot** (dari [@BotFather](https://t.me/BotFather))
+- (Opsional) **API key** untuk AI: [Gemini](https://aistudio.google.com/apikey), [Groq](https://console.groq.com/keys), atau [OpenRouter](https://openrouter.ai/keys)
+
+---
+
+## 🚀 Setup
+
+### 1. Clone & install
 
 ```bash
+git clone <url-repo-kamu>
+cd "Finance Tracker"
 npm install
 ```
 
 ### 2. Supabase
 
-1. Create a project at [supabase.com](https://supabase.com).
-2. In the SQL Editor, run the contents of `supabase/schema.sql` (includes table for Telegram category buttons). Untuk fitur **Tabungan**, jalankan juga `supabase/schema-tabungan.sql`. Untuk **celengan (multiple pots), target tabungan, dan pengingat setor**, jalankan `supabase/schema-tabungan-pots.sql`.
-3. (Optional) Enable Realtime for `public.transactions` and `public.savings_entries`, `public.savings_pots` if you want live updates: Database → Replication → enable for `transactions`.
-4. **Redirect URL (konfirmasi email & reset password):**
-   - Supabase Dashboard → **Authentication → URL Configuration**.
-   - **Site URL:** set ke URL production (e.g. `https://finance-tracker-gamma-livid.vercel.app`).
-   - **Redirect URLs:** tambahkan persis URL yang dipakai app, misalnya:
-     - Production: `https://finance-tracker-gamma-livid.vercel.app/**` (atau domain kamu).
-     - Local: `http://localhost:3000/**`.
-   - Kalau URL redirect belum ada di daftar, link di email (reset password / konfirmasi) bisa gagal atau mengarah ke tempat salah.
-5. **Email template (opsional):** Di Authentication → **Email Templates**, pastikan link konfirmasi/reset pakai **`{{ .ConfirmationURL }}`** (default). Jangan ganti ke `{{ .SiteURL }}` saja, supaya redirect mengikuti `redirectTo` dari app. Kalau user sering dapat "link kedaluwarsa" padahal baru klik: beberapa provider email (e.g. Safe Links, prefetch) membuka link dulu sehingga token terpakai—coba buka link di browser pribadi/incognito atau minta kirim ulang.
-6. Copy **Project URL** and **anon key** from Settings → API. For the webhook, also copy **service_role** key (keep it secret).
-7. **(Opsional) Login dengan Google:** Supabase Dashboard → **Authentication → Providers** → **Google** → Enable. Di [Google Cloud Console](https://console.cloud.google.com/apis/credentials) buat OAuth 2.0 Client ID (tipe Web application). **Authorized JavaScript origins:** tambahkan `https://domain-kamu.vercel.app` dan `http://localhost:3000`. **Authorized redirect URIs:** tambahkan URL callback Supabase (lihat di halaman Google provider di Supabase, bentuknya `https://<project-ref>.supabase.co/auth/v1/callback`). Copy Client ID dan Client Secret ke Supabase (Providers → Google). Simpan.
+1. Buat project di [supabase.com](https://supabase.com).
+2. Buka **SQL Editor** dan jalankan script berikut **berurutan**:
+   - **`supabase/schema.sql`** — tabel transaksi, auth, link Telegram.
+   - **`supabase/schema-tabungan.sql`** — tabel tabungan (entri setor/tarik).
+   - **`supabase/schema-tabungan-pots.sql`** — celengan, target, pengingat, foto/deskripsi.
+3. (Opsional) **Realtime**: Database → Replication → aktifkan untuk `transactions`, `savings_entries`, `savings_pots` agar dashboard update live.
+4. **URL & redirect (penting untuk email)**  
+   Supabase Dashboard → **Authentication → URL Configuration**:
+   - **Site URL**: URL production (mis. `https://your-app.vercel.app`).
+   - **Redirect URLs**: tambahkan `https://your-app.vercel.app/**` dan `http://localhost:3000/**`.
+5. **Google Login (opsional)**  
+   Authentication → Providers → Google → Enable, lalu set Client ID & Secret dari [Google Cloud Console](https://console.cloud.google.com/apis/credentials). Tambahkan authorized origins & redirect URI sesuai petunjuk Supabase.
+6. Copy **Project URL** dan **anon key** dari Settings → API. Untuk webhook Telegram, copy juga **service_role** key (jangan bocor).
 
 ### 3. Environment variables
 
-Copy `.env.example` to `.env.local` and fill in:
+Copy `.env.example` ke `.env.local`:
 
-| Variable | Description |
-|----------|-------------|
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/public key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (for Telegram webhook) |
-| `TELEGRAM_BOT_TOKEN` | From [@BotFather](https://t.me/BotFather) |
-| `TELEGRAM_USER_ID` | (Optional) Fallback single user UUID — if set, unlinked Telegram chats use this user. For multi-user, each person links via dashboard **Link Telegram**. |
-| `NEXT_PUBLIC_APP_URL` | (Optional) URL app untuk redirect auth (tanpa trailing slash), e.g. `https://finance-tracker-gamma-livid.vercel.app`. Kalau kosong, dipakai origin saat request atau default localhost. Penting agar callback auth konsisten di production. |
+```bash
+cp .env.example .env.local
+```
 
-**Multi-user:** Each user signs up on the web app, then in the dashboard uses **Link Telegram** → "Buat kode" → sends `/link KODE` to the bot. Their Telegram is then linked to their account.
+Isi di `.env.local`:
 
-### 4. Run locally
+| Variable | Wajib | Keterangan |
+|----------|--------|------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | ✅ | Project URL Supabase |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | ✅ | Anon/public key Supabase |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ | Service role key (untuk webhook Telegram) |
+| `TELEGRAM_BOT_TOKEN` | ✅ | Token dari @BotFather |
+| `NEXT_PUBLIC_APP_URL` | Disarankan (production) | URL app tanpa trailing slash, untuk redirect auth (mis. `https://your-app.vercel.app`) |
+| `TELEGRAM_SET_WEBHOOK_SECRET` | Opsional | Rahasia untuk endpoint set-webhook (agar hanya kamu yang bisa panggil) |
+| `CRON_SECRET` | Opsional | Untuk cron ringkasan mingguan & pengingat setor (set di Vercel) |
+| `GEMINI_API_KEY` | Opsional* | AI parsing struk & chatbot (prioritas 1) |
+| `GROQ_API_KEY` | Opsional* | Fallback AI (prioritas 2) |
+| `OPENROUTER_API_KEY` | Opsional* | Fallback AI (prioritas 3) |
+
+\* Minimal set satu key AI agar fitur foto struk & Cike AI jalan. Tanpa AI, tetap bisa dipakai untuk transaksi manual & bot Telegram.
+
+**Multi-user:** User daftar di web, lalu di menu **Link Telegram** buat kode dan kirim `/link KODE` ke bot. Tidak perlu isi `TELEGRAM_USER_ID` kalau pakai flow link.
+
+### 4. Jalankan lokal
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Sign up or sign in (email atau Google), then use the dashboard. User yang daftar dengan Google bisa buat password (opsional) lewat **Akun** di sidebar agar bisa masuk dengan email + password juga.
+Buka [http://localhost:3000](http://localhost:3000). Daftar / login (email atau Google), lalu pakai dashboard. User yang login Google bisa (opsional) set password lewat menu **Akun** agar bisa login email+password.
 
-### 5. Telegram webhook
+### 5. Telegram webhook (setelah deploy)
 
-After deploying to Vercel (or any HTTPS host), set the webhook **once**:
+Setelah deploy ke Vercel (atau host HTTPS lain), set webhook **sekali**:
 
-**Cara otomatis (disarankan):** Set env `TELEGRAM_SET_WEBHOOK_SECRET` di Vercel (opsional, untuk keamanan). Setelah deploy, buka di browser:
+**Otomatis (disarankan):**  
+Set env `TELEGRAM_SET_WEBHOOK_SECRET` di Vercel. Setelah deploy, buka di browser:
 
 ```
-https://<domain-vercel-anda>/api/telegram/set-webhook?secret=RAHASIA_ANDA
+https://<domain-kamu>/api/telegram/set-webhook?secret=<nilai-TELEGRAM_SET_WEBHOOK_SECRET>
 ```
 
-(Ganti `<domain-vercel-anda>` dengan domain Vercel Anda, dan `RAHASIA_ANDA` dengan nilai yang sama seperti `TELEGRAM_SET_WEBHOOK_SECRET` di env. Kalau env `TELEGRAM_SET_WEBHOOK_SECRET` tidak di-set, endpoint bisa dipanggil tanpa `?secret=...`.) Webhook akan terdaftar ke URL deploy saat ini.
-
-**Cara manual:** Jalankan di terminal (ganti token dan URL):
+**Manual:**
 
 ```bash
-curl -X POST "https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://YOUR_VERCEL_URL/api/telegram/webhook"
+curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook?url=https://<DOMAIN_KAMU>/api/telegram/webhook"
 ```
-
-Messages to the bot will be parsed and saved to the same `transactions` table.
-
-**Message format:**
-
-- `+500000 gaji` — income, 500000, note "gaji", category auto-detected (e.g. Salary)
-- `-25000 kopi` — expense, 25000, note "kopi", category e.g. Food
-- Multiple lines in one message are supported.
-
-**Tabungan (savings) via bot:**
-
-- `/tabungan` — balas dengan saldo tabungan saat ini
-- `setor 100k` / `setor 500rb` — setor ke tabungan (nominal boleh pakai rb, jt, k)
-- `tarik 50k` — tarik dari tabungan (validasi saldo)
-
-**Ringkasan mingguan:** Lihat [Setup cron](#setup-cron-ringkasan-mingguan) di bawah.
 
 ---
 
-## Checklist Tabungan (apa yang harus ada)
+## 📅 Cron (opsional)
 
-Supaya fitur Tabungan (celengan, setor/tarik, pengingat setor ke Telegram) jalan lengkap:
+- **Ringkasan mingguan**  
+  Vercel cron memanggil `/api/cron/weekly-summary` (jadwal default: Senin 08:00 UTC). Set env `CRON_SECRET` di Vercel; request otomatis pakai header `Authorization: Bearer <CRON_SECRET>`.
 
-| Yang dicek | Keterangan |
-|------------|------------|
-| **Supabase – SQL** | Sudah jalankan `supabase/schema-tabungan.sql` dan `supabase/schema-tabungan-pots.sql` di SQL Editor? (Poin 2 di [Setup](#2-supabase) sudah menyebut ini.) |
-| **Env** | Tidak perlu env baru. Tabungan pakai Supabase + `TELEGRAM_BOT_TOKEN` + `CRON_SECRET` yang sama dengan fitur lain. |
-| **Cron pengingat** | `vercel.json` sudah berisi cron `/api/cron/savings-reminder` (jalan tiap hari). Setelah deploy, Vercel akan panggil otomatis. Pastikan `CRON_SECRET` sudah di-set di Vercel. |
-| **User** | Untuk **pengingat setor ke Telegram**: user harus **Link Telegram** dulu (sidebar → Link Telegram), lalu di halaman **Tabungan** aktifkan "Kirim pengingat ke Telegram" dan pilih hari. |
+- **Pengingat setor tabungan**  
+  Cron harian memanggil `/api/cron/savings-reminder` (default 02:00 UTC). User yang mengaktifkan pengingat di halaman Tabungan akan dapat pesan di Telegram di hari yang dipilih.
 
-Kalau tabel tabungan/celengan/pengingat sudah di-apply di Supabase dan cron + env sudah set, tidak ada yang perlu ditambah khusus untuk tabungan.
+Tes manual (ganti URL & secret):
+
+```bash
+curl -H "Authorization: Bearer <CRON_SECRET>" "https://<domain-kamu>/api/cron/weekly-summary"
+curl -H "Authorization: Bearer <CRON_SECRET>" "https://<domain-kamu>/api/cron/savings-reminder"
+```
 
 ---
 
-## Setup cron (ringkasan mingguan)
+## 🌐 Deployment (Vercel)
 
-Agar bot mengirim ringkasan mingguan (pemasukan/pengeluaran/saldo/tabungan) ke Telegram:
+1. Push repo ke GitHub, import project di [Vercel](https://vercel.com).
+2. Tambahkan semua environment variables di Vercel (Settings → Environment Variables).
+3. Deploy. Lalu set Telegram webhook seperti di atas.
 
-1. **Vercel → Project → Settings → Environment Variables**
-   - Tambah variable: **Name** `CRON_SECRET`, **Value** bebas (mis. `rahasia-cron-kamu`). Simpan.
-2. **Deploy** (push ke repo atau redeploy). File `vercel.json` sudah berisi cron; Vercel akan memanggil `/api/cron/weekly-summary` dan mengirim header `Authorization: Bearer <CRON_SECRET>` otomatis.
-3. **Jadwal saat ini:** Setiap **Senin 08:00 UTC** (15:00 WIB). Ubah di `vercel.json` → `crons[0].schedule` jika mau (format: cron 5 kolom, timezone UTC).
+---
 
-**Tes manual (tanpa tunggu Senin):** Panggil dari browser atau curl (ganti URL dan secret):
-
-```bash
-curl -H "Authorization: Bearer rahasia-cron-kamu" "https://domain-kamu.vercel.app/api/cron/weekly-summary"
-```
-
-Respon `{ "ok": true, "sent": 2 }` = 2 chat terhubung yang dapat pesan.
-
-**Pengingat setor tabungan:** Cron harian memanggil `/api/cron/savings-reminder` setiap hari (jadwal di `vercel.json`, default **02:00 UTC** / 09:00 WIB). User yang mengaktifkan "Pengingat setor" di halaman Tabungan dan memilih hari tertentu akan dapat pesan di Telegram di hari itu (isi: saldo tabungan + ajakan setor). Pakai `CRON_SECRET` yang sama. Tes manual: `curl -H "Authorization: Bearer <CRON_SECRET>" "https://domain-kamu.vercel.app/api/cron/savings-reminder"`.
-
-## Deployment (Vercel)
-
-1. Push the repo to GitHub and import the project in [Vercel](https://vercel.com).
-2. Add all environment variables in Vercel (Project → Settings → Environment Variables).
-3. Deploy. Set the Telegram webhook to `https://<your-domain>/api/telegram/webhook`.
-
-## Project structure
+## 📁 Struktur project
 
 ```
 ├── app/
-│   ├── api/telegram/webhook/   # Telegram webhook handler
-│   ├── auth/                   # Sign in / Sign up page
+│   ├── api/
+│   │   ├── chat/              # Cike AI chatbot
+│   │   ├── cron/               # weekly-summary, savings-reminder
+│   │   ├── parse-receipt/     # AI baca foto struk
+│   │   └── telegram/           # webhook, set-webhook, link-code
+│   ├── auth/                   # Login, signup, update-password
+│   ├── faq/                    # Halaman FAQ
+│   ├── link-telegram/          # Link akun ke bot
+│   ├── profile/                # Akun (ubah password, dll)
+│   ├── tabungan/               # Tabungan & celengan
 │   ├── layout.tsx
 │   ├── page.tsx                # Dashboard (protected)
 │   └── globals.css
@@ -147,19 +171,45 @@ Respon `{ "ok": true, "sent": 2 }` = 2 chat terhubung yang dapat pesan.
 │   ├── Dashboard.tsx
 │   ├── SummaryCards.tsx
 │   ├── AddTransactionForm.tsx
+│   ├── AddFromPhoto.tsx        # Upload foto struk
 │   ├── TransactionTable.tsx
 │   ├── ExpensePieChart.tsx
-│   └── MonthlyBarChart.tsx
+│   ├── MonthlyBarChart.tsx
+│   ├── TabunganContent.tsx
+│   ├── ChatBot.tsx             # Cike AI
+│   ├── FAQContent.tsx
+│   └── ...
 ├── lib/
-│   ├── supabase/               # Browser, server, admin clients
+│   ├── supabase/               # Client browser, server, admin
 │   ├── types.ts
-│   ├── category-rules.ts       # Keyword → category for Telegram
-│   └── telegram-parser.ts      # Parse +50000 gaji / -25000 kopi
+│   ├── category-rules.ts       # Keyword → kategori (Telegram)
+│   ├── telegram-parser.ts      # Parse +50k gaji / -25rb kopi
+│   └── parse-receipt-text.ts   # Helper parsing teks struk
 ├── supabase/
-│   └── schema.sql
-└── .env.example
+│   ├── schema.sql
+│   ├── schema-tabungan.sql
+│   ├── schema-tabungan-pots.sql
+│   └── migrations/             # ALTER TABLE untuk kolom tambahan
+├── .env.example
+└── vercel.json                 # Cron config
 ```
 
-## License
+---
+
+## 📱 Format pesan Telegram
+
+| Pesan | Arti |
+|-------|------|
+| `+500000 gaji` | Pemasukan 500.000, catatan "gaji" |
+| `-25rb kopi` | Pengeluaran 25.000, catatan "kopi" (rb/jt/k didukung) |
+| `/tabungan` | Balas dengan saldo tabungan |
+| `setor 100k` / `setor 500rb` | Setor ke tabungan |
+| `tarik 50k` | Tarik dari tabungan |
+| `/link KODE` | Hubungkan chat ke akun web (setelah buat kode di Link Telegram) |
+
+Atau Klik" Opsi Buttonnya
+---
+
+## 📄 License
 
 MIT
