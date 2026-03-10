@@ -122,7 +122,8 @@ export function AuthForm({
     const redirectTo = getAuthRedirectUrl();
     try {
       if (isForgotPassword) {
-        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+        const resetRedirectTo = `${redirectTo}?flow=recovery`;
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: resetRedirectTo });
         if (error) throw error;
         setMessage("Cek email kamu untuk link reset password. Kalau belum muncul, cek folder spam.");
         setEmail("");

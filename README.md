@@ -24,8 +24,15 @@ npm install
 1. Create a project at [supabase.com](https://supabase.com).
 2. In the SQL Editor, run the contents of `supabase/schema.sql` (includes table for Telegram category buttons). Untuk fitur **Tabungan**, jalankan juga `supabase/schema-tabungan.sql`. Untuk **celengan (multiple pots), target tabungan, dan pengingat setor**, jalankan `supabase/schema-tabungan-pots.sql`.
 3. (Optional) Enable Realtime for `public.transactions` and `public.savings_entries`, `public.savings_pots` if you want live updates: Database → Replication → enable for `transactions`.
-4. **Redirect URL (konfirmasi email & reset password):** Supabase Dashboard → Authentication → URL Configuration. Set **Site URL** ke URL production (e.g. `https://finance-tracker-gamma-livid.vercel.app`). Di **Redirect URLs** tambahkan `https://finance-tracker-gamma-livid.vercel.app/**` dan `http://localhost:3000/**` agar link konfirmasi email / reset password mengarah ke app kamu, bukan localhost.
-5. Copy **Project URL** and **anon key** from Settings → API. For the webhook, also copy **service_role** key (keep it secret).
+4. **Redirect URL (konfirmasi email & reset password):**
+   - Supabase Dashboard → **Authentication → URL Configuration**.
+   - **Site URL:** set ke URL production (e.g. `https://finance-tracker-gamma-livid.vercel.app`).
+   - **Redirect URLs:** tambahkan persis URL yang dipakai app, misalnya:
+     - Production: `https://finance-tracker-gamma-livid.vercel.app/**` (atau domain kamu).
+     - Local: `http://localhost:3000/**`.
+   - Kalau URL redirect belum ada di daftar, link di email (reset password / konfirmasi) bisa gagal atau mengarah ke tempat salah.
+5. **Email template (opsional):** Di Authentication → **Email Templates**, pastikan link konfirmasi/reset pakai **`{{ .ConfirmationURL }}`** (default). Jangan ganti ke `{{ .SiteURL }}` saja, supaya redirect mengikuti `redirectTo` dari app. Kalau user sering dapat "link kedaluwarsa" padahal baru klik: beberapa provider email (e.g. Safe Links, prefetch) membuka link dulu sehingga token terpakai—coba buka link di browser pribadi/incognito atau minta kirim ulang.
+6. Copy **Project URL** and **anon key** from Settings → API. For the webhook, also copy **service_role** key (keep it secret).
 
 ### 3. Environment variables
 
@@ -38,6 +45,7 @@ Copy `.env.example` to `.env.local` and fill in:
 | `SUPABASE_SERVICE_ROLE_KEY` | Supabase service role key (for Telegram webhook) |
 | `TELEGRAM_BOT_TOKEN` | From [@BotFather](https://t.me/BotFather) |
 | `TELEGRAM_USER_ID` | (Optional) Fallback single user UUID — if set, unlinked Telegram chats use this user. For multi-user, each person links via dashboard **Link Telegram**. |
+| `NEXT_PUBLIC_APP_URL` | (Optional) URL app untuk redirect auth (tanpa trailing slash), e.g. `https://finance-tracker-gamma-livid.vercel.app`. Kalau kosong, dipakai origin saat request atau default localhost. Penting agar callback auth konsisten di production. |
 
 **Multi-user:** Each user signs up on the web app, then in the dashboard uses **Link Telegram** → "Buat kode" → sends `/link KODE` to the bot. Their Telegram is then linked to their account.
 
