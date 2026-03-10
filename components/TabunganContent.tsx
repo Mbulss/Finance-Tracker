@@ -195,7 +195,6 @@ export function TabunganContent({ userId }: TabunganContentProps) {
       .order("created_at", { ascending: false });
     if (!err) setEntries((data as SavingsEntry[]) ?? []);
     setOptimisticEntries([]);
-    setLoading(false);
   }, [supabase, userId]);
 
   const fetchPots = useCallback(async () => {
@@ -218,9 +217,14 @@ export function TabunganContent({ userId }: TabunganContentProps) {
   }, [supabase, userId]);
 
   useEffect(() => {
-    fetchEntries();
-    fetchPots().catch(() => setPots([]));
-    fetchReminder().catch(() => setReminder({ user_id: userId, enabled: false, day_of_week: 1 }));
+    let cancelled = false;
+    Promise.all([
+      fetchEntries(),
+      fetchPots().catch(() => setPots([])),
+      fetchReminder().catch(() => setReminder({ user_id: userId, enabled: false, day_of_week: 1 })),
+    ]).then(() => {
+      if (!cancelled) setLoading(false);
+    });
 
     const channel = supabase
       .channel(`savings:${userId}`)
@@ -239,6 +243,7 @@ export function TabunganContent({ userId }: TabunganContentProps) {
       )
       .subscribe();
     return () => {
+      cancelled = true;
       supabase.removeChannel(channel);
       supabase.removeChannel(channelPots);
     };
