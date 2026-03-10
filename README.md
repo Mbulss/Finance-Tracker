@@ -1,6 +1,6 @@
 # Finance Tracker
 
-A modern personal finance tracker with a web dashboard and Telegram bot. Add transactions manually or by sending messages like `-25000 kopi` or `+500000 gaji`.
+A modern personal finance tracker with a web dashboard and Telegram bot. Add transactions manually or by sending messages like `-25000 kopi` or `+500000 gaji`. **Bisa dipakai di mobile** — buka URL app di browser HP; layout responsif dan ada menu sidebar yang bisa dibuka/tutup.
 
 ## Tech Stack
 
@@ -33,6 +33,7 @@ npm install
    - Kalau URL redirect belum ada di daftar, link di email (reset password / konfirmasi) bisa gagal atau mengarah ke tempat salah.
 5. **Email template (opsional):** Di Authentication → **Email Templates**, pastikan link konfirmasi/reset pakai **`{{ .ConfirmationURL }}`** (default). Jangan ganti ke `{{ .SiteURL }}` saja, supaya redirect mengikuti `redirectTo` dari app. Kalau user sering dapat "link kedaluwarsa" padahal baru klik: beberapa provider email (e.g. Safe Links, prefetch) membuka link dulu sehingga token terpakai—coba buka link di browser pribadi/incognito atau minta kirim ulang.
 6. Copy **Project URL** and **anon key** from Settings → API. For the webhook, also copy **service_role** key (keep it secret).
+7. **(Opsional) Login dengan Google:** Supabase Dashboard → **Authentication → Providers** → **Google** → Enable. Di [Google Cloud Console](https://console.cloud.google.com/apis/credentials) buat OAuth 2.0 Client ID (tipe Web application). **Authorized JavaScript origins:** tambahkan `https://domain-kamu.vercel.app` dan `http://localhost:3000`. **Authorized redirect URIs:** tambahkan URL callback Supabase (lihat di halaman Google provider di Supabase, bentuknya `https://<project-ref>.supabase.co/auth/v1/callback`). Copy Client ID dan Client Secret ke Supabase (Providers → Google). Simpan.
 
 ### 3. Environment variables
 
@@ -55,7 +56,7 @@ Copy `.env.example` to `.env.local` and fill in:
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). Sign up or sign in, then use the dashboard.
+Open [http://localhost:3000](http://localhost:3000). Sign up or sign in (email atau Google), then use the dashboard. User yang daftar dengan Google bisa buat password (opsional) lewat **Akun** di sidebar agar bisa masuk dengan email + password juga.
 
 ### 5. Telegram webhook
 

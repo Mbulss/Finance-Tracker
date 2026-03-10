@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
   }
 
   const supabase = await createServerSupabaseClient();
-  const { error } = await supabase.auth.exchangeCodeForSession(code);
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
   if (error) {
     console.error("[auth/callback]", error.message, error.code);
@@ -46,6 +46,14 @@ export async function GET(request: NextRequest) {
 
   if (type === "recovery" || flow === "recovery") {
     return NextResponse.redirect(`${baseUrl}/auth/update-password`);
+  }
+
+  const isOAuth = data?.user?.identities?.some(
+    (id: { provider?: string }) => id.provider === "google"
+  );
+
+  if (isOAuth) {
+    return NextResponse.redirect(`${baseUrl}/`);
   }
 
   await supabase.auth.signOut();

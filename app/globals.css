@@ -39,6 +39,15 @@ button, [role="button"], a {
   touch-action: manipulation;
 }
 
+/* Cegah auto-zoom saat fokus input di iOS/mobile (font < 16px memicu zoom) */
+@media screen and (max-width: 1024px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 body {
   background: var(--surface);
   color: #0f172a;
