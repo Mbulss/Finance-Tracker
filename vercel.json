@@ -1,16 +1,5 @@
 {
-  "crons": [
-    {
-      "path": "/api/cron/weekly-summary",
-      "schedule": "0 8 * * 1"
-    },
-    {
-      "path": "/api/cron/savings-reminder",
-      "schedule": "0 2 * * *"
-    },
-    {
-      "path": "/api/cron/email-sync",
-      "schedule": "0 * * * *"
-    }
-  ]
+  "crons": []
 }
+
+
