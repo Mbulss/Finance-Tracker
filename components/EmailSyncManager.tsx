@@ -27,6 +27,7 @@ export function EmailSyncManager() {
   const [previewData, setPreviewData] = useState<PreviewItem[] | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Partial<PreviewItem>>({});
+  const [mounted, setMounted] = useState(false);
 
   const supabase = createClient();
 
@@ -379,7 +380,7 @@ export function EmailSyncManager() {
                             {trx.type === "expense" ? "−" : "+"} Rp {trx.amount.toLocaleString("id-ID")}
                           </p>
                           <p className="text-xs text-muted dark:text-slate-400">
-                            {new Date(trx.created_at).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" })}
+                            {mounted && new Date(trx.created_at).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" })}
                           </p>
                         </div>
                         <button
