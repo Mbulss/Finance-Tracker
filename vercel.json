@@ -7,6 +7,10 @@
     {
       "path": "/api/cron/savings-reminder",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron/email-sync",
+      "schedule": "0 * * * *"
     }
   ]
 }

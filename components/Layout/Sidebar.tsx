@@ -88,6 +88,25 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
               Tabungan
             </Link>
             <Link
+              href="/email-sync"
+              onClick={onClose}
+              className={`flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${
+                pathname === "/email-sync"
+                  ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary"
+                  : "text-muted hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+              }`}
+            >
+              <svg className="h-5 w-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                />
+              </svg>
+              Email otomatis
+            </Link>
+            <Link
               href="/link-telegram"
               onClick={onClose}
               className={`flex min-h-[44px] items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${pathname === "/link-telegram" ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary" : "text-muted hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:text-slate-400 dark:hover:text-slate-200"}`}

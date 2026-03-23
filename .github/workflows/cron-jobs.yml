@@ -1,0 +1,43 @@
+name: Recurring Cron Jobs (Vercel Workaround)
+
+on:
+  schedule:
+    # Run every hour for email sync
+    - cron: '0 * * * *'
+    # Run every day at 02:00 UTC for savings reminder
+    - cron: '0 2 * * *'
+    # Run every Monday at 08:00 UTC for weekly summary
+    - cron: '0 8 * * 1'
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  cron_job:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Determine and Run Job
+        env:
+          APP_URL: ${{ secrets.APP_URL || 'https://finance-tracker-gamma-livid.vercel.app' }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          # Get current hour and day of week
+          HOUR=$(date -u +%H)
+          MINUTE=$(date -u +%M)
+          DAY_OF_WEEK=$(date -u +%u) # 1=Monday, 7=Sunday
+
+          echo "Current Time (UTC): $HOUR:$MINUTE, Day of week: $DAY_OF_WEEK"
+
+          # 1. Email Sync (Always run since schedule is minimum hourly)
+          echo "Triggering Email Sync..."
+          curl -s -X GET "$APP_URL/api/cron/email-sync?secret=$CRON_SECRET" -o /dev/null -w "%{http_code}\n"
+          
+          # 2. Savings Reminder (Run if hour is 02)
+          if [ "$HOUR" == "02" ]; then
+            echo "Triggering Savings Reminder..."
+            curl -s -X GET "$APP_URL/api/cron/savings-reminder?secret=$CRON_SECRET" -o /dev/null -w "%{http_code}\n"
+          fi
+
+          # 3. Weekly Summary (Run if Monday and hour is 08)
+          if [ "$DAY_OF_WEEK" == "1" ] && [ "$HOUR" == "08" ]; then
+            echo "Triggering Weekly Summary..."
+            curl -s -X GET "$APP_URL/api/cron/weekly-summary?secret=$CRON_SECRET" -o /dev/null -w "%{http_code}\n"
+          fi

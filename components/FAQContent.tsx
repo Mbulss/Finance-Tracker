@@ -82,6 +82,16 @@ Tips agar hasil lebih akurat:
 
 • Di Telegram (kalau akun sudah di-link): /tabungan untuk cek saldo, setor 100rb atau tarik 50k untuk setor/tarik. Pengingat setor bisa dikirim ke Telegram tiap hari yang kamu pilih (atur di halaman Tabungan).`,
   },
+  {
+    id: "email-sync",
+    question: "Bagaimana cara kerja Email Otomatis (Gmail API)?",
+    icon: "✉️",
+    answer: `Fitur ini membaca kotak masuk Gmail Anda, mencari email resi transfer dari Mandiri/BCA, lalu mengubahnya secara otomatis menjadi data pengeluaran di Dashboard.
+
+• Privasi 100% Aman: Kode kami dirancang HANYA mencari dan membaca email pengirim dari domain bank resmi (@bankmandiri.co.id & bca.co.id). Email dari kolega, bos, atau teman Anda sama sekali tidak pernah diakses atau ditarik.
+• Cara Pakai: Cukup buka halaman "Email Otomatis", klik Hubungkan. Jangan panik bila muncul peringatan merah "Google hasn't verified this app" (fitur ini masih dalam tahap pengetesan internal), silakan klik Advanced (Lanjutan) lalu klik Allow/Continue.
+• Otomatis Masuk: Sesudah ditarik, datanya akan langsung memotong/menambah saldo di grafik Dashboard persis layaknya diketik manual!`,
+  },
 ];
 
 export function FAQContent() {
