@@ -23,7 +23,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Finance Tracker",
+  title: "Finance Tracker AI",
   description: "Personal finance tracker with web dashboard and Telegram",
   icons: {
     icon: "/favicon.png",

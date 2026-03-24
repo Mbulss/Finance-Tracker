@@ -46,7 +46,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
             <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 shadow-sm shrink-0 overflow-hidden">
                <img src="/logo.png" alt="" className="h-7 w-7 object-contain scale-125" />
             </div>
-            <span className="text-base font-black tracking-tight text-slate-900 dark:text-white">Finance Tracker</span>
+            <span className="text-base font-black tracking-tight text-slate-900 dark:text-white">Finance Tracker AI</span>
             <div className="ml-auto"><ThemeToggle /></div>
           </div>
           {/* Mobile: close button saja (logo di navbar, theme toggle di navbar kanan) */}
@@ -132,6 +132,13 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
               </svg>
               <span>Keluar</span>
             </button>
+
+            {/* Version Label */}
+            <div className="px-4 pb-2 pt-2 text-center sm:text-left">
+              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-300 dark:text-slate-600">
+                Version 1.5.0
+              </span>
+            </div>
           </div>
         </div>
       </aside>

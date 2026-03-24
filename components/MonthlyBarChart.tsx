@@ -37,14 +37,14 @@ export function MonthlyBarChart({ transactions, showAllMonths = false }: Monthly
 
   if (data.length === 0) {
     return (
-      <div className="flex h-[280px] flex-col items-center justify-center rounded-xl bg-slate-50/80 dark:bg-slate-800/50 text-center">
-        <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 text-muted dark:text-slate-400">
-          <svg className="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <div className="flex h-[280px] flex-col items-center justify-center rounded-[2rem] bg-slate-50/50 dark:bg-slate-800/20 border border-dashed border-slate-200 dark:border-slate-700 text-center p-6">
+        <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-white dark:bg-slate-800 shadow-sm border border-slate-100 dark:border-slate-700 text-slate-300 dark:text-slate-600">
+          <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
         </div>
-        <p className="text-sm text-muted dark:text-slate-400">Belum ada data bulanan</p>
-        <p className="mt-1 text-xs text-muted dark:text-slate-500">Transaksi akan tampil di sini</p>
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Belum ada data bulanan</p>
+        <p className="mt-2 text-[10px] font-bold text-slate-300 dark:text-slate-500 max-w-[160px]">Statistik bulanan akan muncul secara otomatis.</p>
       </div>
     );
   }

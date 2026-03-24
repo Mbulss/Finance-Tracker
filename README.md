@@ -1,4 +1,4 @@
-# Finance Tracker
+# Finance Tracker AI
 
 Aplikasi **pencatat keuangan pribadi** yang modern: catat pemasukan & pengeluaran lewat **web** atau **Telegram**, lihat ringkasan & grafik, kelola **tabungan (celengan)**, dan dapat bantuan dari **AI asisten (Cike AI)**. Bisa dipakai di desktop dan mobile (layout responsif, PWA-ready).
 
@@ -51,7 +51,7 @@ Aplikasi **pencatat keuangan pribadi** yang modern: catat pemasukan & pengeluara
 
 ```bash
 git clone <url-repo-kamu>
-cd "Finance Tracker"
+cd "Finance Tracker AI"
 npm install
 ```
 

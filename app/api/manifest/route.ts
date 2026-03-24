@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
 const MANIFEST = {
-  name: "Finance Tracker",
-  short_name: "Finance Tracker",
+  name: "Finance Tracker AI",
+  short_name: "Finance Tracker AI",
   description: "Personal finance tracker with web dashboard and Telegram",
   start_url: "/",
   display: "standalone",

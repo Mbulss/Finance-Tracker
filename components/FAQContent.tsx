@@ -2,21 +2,22 @@
 
 import { useState, useMemo, useEffect } from "react";
 import { TELEGRAM_BOT_USERNAME } from "@/lib/constants";
+import { SelectDropdown } from "./SelectDropdown";
 
 const FAQ_ITEMS = [
   {
     id: "apa-itu",
-    question: "Apa itu Finance Tracker?",
+    question: "Apa itu Finance Tracker AI?",
     icon: "💰",
     category: "Dasar",
-    answer: `Finance Tracker adalah asisten keuangan pintar yang dirancang untuk mempermudah hidup Anda. Bukan sekadar pencatat biasa, aplikasi ini dilengkapi berbagai fitur canggih:
+    answer: `Finance Tracker AI adalah asisten keuangan pintar yang dirancang untuk mempermudah hidup Anda. Bukan sekadar pencatat biasa, aplikasi ini dilengkapi berbagai fitur canggih:
 
-• 🤖 **AI Receipt Scanner**: Cukup upload foto struk, AI akan membaca nominal dan kategorinya secara otomatis.
-• ✉️ **Gmail Auto-Sync**: Sinkronisasi otomatis dari email bank (BCA/Mandiri) langsung ke dashboard.
-• 📱 **Telegram Bot**: Catat pengeluaran hanya dalam hitungan detik lewat chat Telegram.
-• 🐷 **Sistem Tabungan**: Kelola "uang dingin" dan buat celengan target (dana darurat, liburan, dll).
-• 💬 **Cike AI**: Tanya tips keuangan atau minta ringkasan bulanan ke asisten AI kami.
-• 📊 **Dashboard Interaktif**: Lihat perkembangan asetmu lewat grafik dan laporan yang estetik.
+• **AI Receipt Scanner**: Cukup upload foto struk, AI akan membaca nominal dan kategorinya secara otomatis.
+• **Gmail Auto-Sync**: Sinkronisasi otomatis dari email bank (BCA/Mandiri) langsung ke dashboard.
+• **Telegram Bot**: Catat pengeluaran hanya dalam hitungan detik lewat chat Telegram.
+• **Sistem Tabungan**: Kelola "uang dingin" dan buat celengan target (dana darurat, liburan, dll).
+• **Cike AI**: Tanya tips keuangan atau minta ringkasan bulanan ke asisten AI kami.
+• **Dashboard Interaktif**: Lihat perkembangan asetmu lewat grafik dan laporan yang estetik.
 
 Semua data tersimpan aman dan bisa diakses dari perangkat mana saja (Web & PWA).`,
   },
@@ -52,7 +53,20 @@ Kode berlaku 10 menit. Kalau bingung, buka halaman Link Telegram — kedua cara 
     question: "Bagaimana cara ubah password?",
     icon: "🔒",
     category: "Akun",
-    answer: "Buka menu Akun di sidebar (di atas Keluar). Di section \"Ubah Password\", isi password lama (untuk konfirmasi), password baru, dan konfirmasi password baru, lalu klik \"Ubah password\". Notifikasi hijau akan muncul jika berhasil. Kalau lupa password lama, pakai \"Lupa password?\" di halaman login untuk dapat link reset lewat email.",
+    answer: "Buka menu Akun di sidebar (di atas Keluar). Di section \"Ubah Password\", isi password lama (untuk konfirmasi), password baru, and konfirmasi password baru, lalu klik \"Ubah password\". Notifikasi hijau akan muncul jika berhasil. Kalau lupa password lama, pakai \"Lupa password?\" di halaman login untuk dapat link reset lewat email.",
+  },
+  {
+    id: "email-sync",
+    question: "Apa itu Email Auto-Sync dan cara pakainya?",
+    icon: "✉️",
+    category: "Integrasi",
+    answer: `Email Auto-Sync adalah fitur paling canggih yang memungkinkan transaksi kamu tercatat secara otomatis hanya dari email notifikasi bank. 
+
+1. Buka menu **Email Otomatis** di sidebar.
+2. Klik tombol "HUBUNGKAN GMAIL" dan login dengan akun Google kamu.
+3. Selesai! Sekarang, setiap ada email notifikasi transaksi masuk (misal dari BCA, Mandiri, dll), Finance Tracker AI akan otomatis membacanya dan memasukkannya ke Dashboard kamu tanpa perlu input manual sama sekali.
+
+Fitur ini aman (menggunakan API resmi Google) dan hanya butuh setup sekali saja.`,
   },
   {
     id: "tambah-foto",
@@ -76,7 +90,7 @@ Tips agar hasil lebih akurat:
     question: "Bisakah export data transaksi?",
     icon: "📥",
     category: "Transaksi",
-    answer: "Ya. Di Dashboard, gunakan filter bulan jika perlu, lalu klik tombol \"Export CSV\". File CSV akan terunduh berisi transaksi yang tampil (dengan format nominal dan tanggal yang rapi), siap dibuka di Excel atau Google Sheets.",
+    answer: "Ya. Di Dashboard, gunakan filter bulan jika perlu, lalu klik tombol \"Export CSV\". File CSV akan terunduh berisi transaksi yang tampil (dengan format nominal dan tanggal yang rpi), siap dibuka di Excel atau Google Sheets.",
   },
   {
     id: "kategori",
@@ -90,26 +104,13 @@ Tips agar hasil lebih akurat:
     question: "Apa itu Tabungan dan cara pakainya?",
     icon: "🐷",
     category: "Fitur",
-    answer: `Tabungan di Finance Tracker adalah fitur "uang dingin" terpisah dari pemasukan/pengeluaran harian.
-
-• Saldo di atas = total uang tabungan kamu (setor minus tarik).
+    answer: `• Saldo di atas = total uang tabungan kamu (setor minus tarik).
 
 • Celengan = bagi per tujuan: Umum, Dana darurat, Liburan, dll. Kamu bisa set target per celengan dan lihat progresnya.
 
 • Setor / Tarik = catat setoran atau penarikan uang ke/dari tabungan. Pindahkan uang = pindah antar celengan (mis. dari Umum ke Dana darurat) tanpa tarik dulu — saldo total tetap sama.
 
 • Di Telegram (kalau akun sudah di-link): /tabungan untuk cek saldo, setor 100rb atau tarik 50k untuk setor/tarik. Pengingat setor bisa dikirim ke Telegram tiap hari yang kamu pilih (atur di halaman Tabungan).`,
-  },
-  {
-    id: "email-sync",
-    question: "Bagaimana cara kerja Email Otomatis (Gmail API)?",
-    icon: "✉️",
-    category: "Integrasi",
-    answer: `Fitur ini membaca kotak masuk Gmail Anda, mencari email resi transfer dari Mandiri/BCA, lalu mengubahnya secara otomatis menjadi data pengeluaran di Dashboard.
-
-• Privasi 100% Aman: Kode kami dirancang HANYA mencari dan membaca email pengirim dari domain bank resmi (@bankmandiri.co.id & bca.co.id). Email dari kolega, bos, atau teman Anda sama sekali tidak pernah diakses atau ditarik.
-• Cara Pakai: Cukup buka halaman "Email Otomatis", klik Hubungkan. Jangan panik bila muncul peringatan merah "Google hasn't verified this app" (fitur ini masih dalam tahap pengetesan internal), silakan klik Advanced (Lanjutan) lalu klik Allow/Continue.
-• Otomatis Masuk: Sesudah ditarik, datanya akan langsung memotong/menambah saldo di grafik Dashboard persis layaknya diketik manual!`,
   },
   {
     id: "pengingat",
@@ -130,7 +131,7 @@ Tips agar hasil lebih akurat:
     question: "Apakah saya bisa mengakses dari banyak perangkat?",
     icon: "💻",
     category: "Dasar",
-    answer: "Tentu saja! Karena Finance Tracker berbasis web (PWA), kamu bisa buka dari browser laptop, tablet, maupun HP. Cukup login dengan akun yang sama, maka semua data akan langsung sinkron secara real-time.",
+    answer: "Tentu saja! Karena Finance Tracker AI berbasis web (PWA), kamu bisa buka dari browser laptop, tablet, maupun HP. Cukup login dengan akun yang sama, maka semua data akan langsung sinkron secara real-time.",
   },
   {
     id: "dark-mode",
@@ -219,7 +220,7 @@ export function FAQContent() {
             <div className="space-y-6">
                <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-black uppercase tracking-[0.25em] border border-slate-200 dark:border-slate-700 mx-auto lg:mx-0 shadow-sm">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                  Pusat Bantuan & FAQ 📖
+                  Pusat Bantuan & FAQ
                </div>
 
                {/* Mobile Logo: Only visible on mobile/tablet */}
@@ -228,7 +229,7 @@ export function FAQContent() {
                   <div className="relative bg-white dark:bg-slate-800 p-6 rounded-[2.5rem] shadow-xl ring-2 ring-slate-100 dark:ring-slate-800">
                       <div className="text-4xl">🤔</div>
                       <div className="absolute -bottom-1 -right-1 bg-primary text-white p-2.5 rounded-2xl shadow-lg">
-                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 4v16m8-8H4" /></svg>
                       </div>
                   </div>
                </div>
@@ -237,7 +238,7 @@ export function FAQContent() {
                  <Typewriter phrases={["Ada pertanyaan?", "Cari Jawaban?", "Butuh Panduan?", "Bantuan AI 24/7."]} />
                </h1>
                <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto lg:mx-0 font-medium text-lg leading-relaxed">
-                 Temukan panduan lengkap dan jawaban cepat untuk memaksimalkan fitur Finance Tracker Anda. Tim kami siap membantu Anda kapan pun.
+                 Temukan panduan lengkap dan jawaban cepat untuk memaksimalkan fitur Finance Tracker AI Anda. Tim kami siap membantu Anda kapan pun.
                </p>
             </div>
 
@@ -256,19 +257,14 @@ export function FAQContent() {
                 </svg>
               </div>
 
-              <div className="flex-1 relative">
-                <select
+              <div className="flex-1">
+                <SelectDropdown
                   value={activeCategory}
-                  onChange={(e) => setActiveCategory(e.target.value)}
-                  className="w-full appearance-none pl-6 pr-12 py-4 rounded-[2rem] border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-900 dark:text-white font-black text-xs sm:text-sm uppercase tracking-widest focus:ring-8 focus:ring-primary/5 focus:border-primary transition-all outline-none shadow-sm cursor-pointer h-[60px]"
-                >
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat} className="bg-white dark:bg-slate-900 text-slate-900 dark:text-white font-black">{cat}</option>
-                  ))}
-                </select>
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
-                </div>
+                  onChange={setActiveCategory}
+                  options={CATEGORIES.map(cat => ({ value: cat, label: cat.toUpperCase() }))}
+                  placeholder="Kategori"
+                  className="w-full h-[60px]"
+                />
               </div>
             </div>
           </div>
@@ -279,7 +275,7 @@ export function FAQContent() {
              <div className="relative bg-white dark:bg-slate-800 p-8 sm:p-12 rounded-[3rem] sm:rounded-[4rem] shadow-2xl ring-2 ring-slate-100 dark:ring-slate-700 scale-100 sm:scale-105">
                 <div className="text-5xl sm:text-7xl">🤔</div>
                 <div className="absolute -bottom-2 -right-2 sm:-bottom-4 sm:-right-4 bg-primary text-white p-3 sm:p-4 rounded-2xl sm:rounded-3xl shadow-2xl animate-bounce">
-                   <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                   <svg className="w-6 h-6 sm:w-8 sm:h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" /></svg>
                 </div>
              </div>
           </div>
@@ -349,7 +345,9 @@ export function FAQContent() {
           })
         ) : (
           <div className="py-24 text-center space-y-6">
-            <p className="text-6xl text-slate-200 dark:text-slate-800 animate-bounce">🔍</p>
+            <div className="flex justify-center text-slate-200 dark:text-slate-800 animate-bounce">
+               <svg className="w-20 h-20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+            </div>
             <div className="space-y-2">
               <p className="text-2xl font-black text-slate-900 dark:text-white">Pertanyaan Tidak Ditemukan</p>
               <p className="text-base text-slate-400 dark:text-slate-500">Coba gunakan kata kunci lain atau pilih kategori Semua.</p>

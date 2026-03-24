@@ -9,17 +9,17 @@ interface Message {
 }
 
 const QUICK_ACTIONS = [
-  "Ringkasan bulan ini",
-  "Tips keuangan",
-  "Kategori terbanyak",
-  "Cara export CSV",
+  "Ringkasan bulan ini 📊",
+  "Tips keuangan 💡",
+  "Kategori terbanyak 🛍️",
+  "Cara export CSV 📥",
 ];
 
 function renderInline(text: string) {
   const parts = text.split(/(\*\*[^*]+\*\*)/g);
   return parts.map((part, i) => {
     const bold = part.match(/^\*\*(.+)\*\*$/);
-    if (bold) return <strong key={i} className="font-semibold">{bold[1]}</strong>;
+    if (bold) return <strong key={i} className="font-extrabold text-primary dark:text-sky-400">{bold[1]}</strong>;
     return <span key={i}>{part}</span>;
   });
 }
@@ -34,9 +34,9 @@ function renderMarkdown(text: string) {
     const Tag = listItems.type === "ul" ? "ul" : "ol";
     const cls = listItems.type === "ul" ? "list-disc" : "list-decimal";
     elements.push(
-      <Tag key={`list-${elements.length}`} className={`${cls} ml-4 my-1 space-y-0.5`}>
+      <Tag key={`list-${elements.length}`} className={`${cls} ml-5 my-2 space-y-1.5`}>
         {listItems.items.map((item, j) => (
-          <li key={j}>{renderInline(item)}</li>
+          <li key={j} className="pl-1 uppercase text-[11px] font-black tracking-wider text-slate-600 dark:text-slate-300">{renderInline(item)}</li>
         ))}
       </Tag>
     );
@@ -57,9 +57,9 @@ function renderMarkdown(text: string) {
     } else {
       flushList();
       if (line.trim() === "") {
-        elements.push(<span key={`br-${i}`} className="block h-2" />);
+        elements.push(<span key={`br-${i}`} className="block h-3" />);
       } else {
-        elements.push(<span key={`p-${i}`} className="block">{renderInline(line)}</span>);
+        elements.push(<span key={`p-${i}`} className="block leading-relaxed">{renderInline(line)}</span>);
       }
     }
   }
@@ -71,7 +71,7 @@ function renderMarkdown(text: string) {
 export function ChatBot({ onTransactionAdded }: { onTransactionAdded?: () => void }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
-    { id: "welcome", role: "assistant", content: "Yo! Aku Cike AI, asisten keuanganmu 👋\nMau cek keuangan, tambahin transaksi, atau butuh tips? Gas langsung aja ketik!" },
+    { id: "welcome", role: "assistant", content: "Yo! Aku **Cike AI**, asisten keuanganmu 👋\nMau cek keuangan, tambahin transaksi, atau butuh tips? Gas langsung aja ketik!" },
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -81,20 +81,24 @@ export function ChatBot({ onTransactionAdded }: { onTransactionAdded?: () => voi
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
-      scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
+      if (scrollRef.current) {
+        scrollRef.current.scrollTo({
+          top: scrollRef.current.scrollHeight,
+          behavior: "smooth"
+        });
+      }
     });
   }, []);
 
   useEffect(() => {
     if (open) {
       scrollToBottom();
-      setTimeout(() => inputRef.current?.focus(), 200);
+      setTimeout(() => inputRef.current?.focus(), 400); // Wait for animation
     } else {
       setMobileViewport(null);
     }
   }, [open, scrollToBottom]);
 
-  // Mobile: sesuaikan panel dengan visual viewport agar tidak ada gap saat keyboard terbuka
   useEffect(() => {
     const vv = typeof window !== "undefined" ? window.visualViewport : null;
     if (!open || !vv) return;
@@ -118,7 +122,6 @@ export function ChatBot({ onTransactionAdded }: { onTransactionAdded?: () => voi
     };
   }, [open]);
 
-  // Global event listener to open chat from anywhere
   useEffect(() => {
     const handleToggle = () => setOpen(true);
     window.addEventListener("toggle-cike-ai", handleToggle);
@@ -169,80 +172,71 @@ export function ChatBot({ onTransactionAdded }: { onTransactionAdded?: () => voi
         type="button"
         onClick={() => setOpen((v) => !v)}
         className={`
-          fixed bottom-5 right-5 z-50 flex h-14 w-14 items-center justify-center rounded-full
-          bg-primary text-white shadow-lg transition-all duration-200
-          hover:scale-105 hover:shadow-xl active:scale-95
-          sm:bottom-6 sm:right-6
-          ${open ? "rotate-0 bg-slate-600 dark:bg-slate-500" : ""}
+          fixed bottom-5 right-5 z-[100] flex h-16 w-16 items-center justify-center rounded-[2rem]
+          bg-gradient-to-tr from-primary to-sky-400 text-white shadow-2xl shadow-primary/40 
+          transition-all duration-500 hover:scale-110 hover:rotate-6 active:scale-95
+          sm:bottom-8 sm:right-8
+          ${open ? "bg-slate-900 dark:bg-slate-800 rotate-90 !rounded-full shadow-slate-500/20" : ""}
         `}
         aria-label={open ? "Tutup chatbot" : "Buka Cike AI"}
       >
-        {open ? (
-          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+        <div className="relative h-7 w-7">
+          <svg 
+            className={`absolute inset-0 h-7 w-7 transition-all duration-500 ${open ? "opacity-100 scale-100 rotate-0" : "opacity-0 scale-50 -rotate-45"}`} 
+            fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}
+          >
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
           </svg>
-        ) : (
-          <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+          <svg 
+            className={`absolute inset-0 h-7 w-7 transition-all duration-500 ${open ? "opacity-0 scale-50 rotate-45" : "opacity-100 scale-100 rotate-0"}`} 
+            fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}
+          >
             <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
           </svg>
-        )}
+        </div>
       </button>
 
       {/* Chat panel */}
       {open && (
         <div
           className={`
-            fixed z-50 flex flex-col overflow-hidden rounded-2xl border border-border
-            bg-card dark:bg-slate-800 dark:border-slate-700 shadow-2xl
-            transition-all duration-200 animate-chat-in
-            /* Mobile: ukuran/posisi pakai style dari visualViewport (supaya rapat dengan keyboard) */
-            left-0 right-0
-            /* Default mobile fallback */
-            bottom-0 top-14
-            /* Desktop: popup */
-            sm:bottom-24 sm:right-6 sm:left-auto sm:top-auto sm:h-[520px] sm:w-[400px]
-            sm:rounded-2xl
+            fixed z-[90] flex flex-col overflow-hidden border border-slate-200/60 dark:border-slate-800/60
+            bg-white/90 dark:bg-slate-900/90 backdrop-blur-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.2)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.5)]
+            transition-all duration-500 animate-in fade-in slide-in-from-bottom-8 zoom-in-95
+            left-0 right-0 bottom-0 top-14
+            sm:bottom-28 sm:right-8 sm:left-auto sm:top-auto sm:h-[600px] sm:w-[420px] 
+            rounded-t-[2.5rem] sm:rounded-[2.5rem]
           `}
           style={
             mobileViewport
-              ? {
-                  top: mobileViewport.top,
-                  height: mobileViewport.height,
-                  bottom: "auto",
-                }
+              ? { top: mobileViewport.top, height: mobileViewport.height, bottom: "auto" }
               : undefined
           }
         >
           {/* Header */}
-          <div className="flex items-center gap-3 border-b border-border dark:border-slate-700 bg-primary/5 dark:bg-primary/10 px-4 py-3">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white dark:bg-slate-200 ring-1 ring-slate-200 dark:ring-slate-600 shadow-sm">
-              <img src="/cike-ai.png" alt="" className="h-full w-full object-contain p-0.5" />
+          <div className="relative flex items-center gap-4 border-b border-slate-100 dark:border-slate-800/80 bg-white/50 dark:bg-slate-900/50 px-6 py-5">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary via-sky-400 to-primary" />
+            <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-white dark:bg-slate-800 ring-2 ring-slate-100 dark:ring-slate-800 shadow-md transform group-hover:rotate-6 transition-transform">
+              <img src="/cike-ai.png" alt="" className="h-full w-full object-contain p-1" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">Cike AI</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400">Tanya apa aja soal keuanganmu</p>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-black text-slate-900 dark:text-white tracking-tight leading-tight">Cike AI</h3>
+                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse ring-4 ring-emerald-500/20" />
+              </div>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mt-0.5">Asisten Pintar Kamu</p>
             </div>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-600 dark:hover:bg-slate-700 dark:hover:text-slate-300 sm:hidden"
-              aria-label="Tutup"
-            >
-              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
           </div>
 
           {/* Messages */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-3">
+          <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-hide">
             {messages.map((msg) => (
-              <div key={msg.id} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+              <div key={msg.id} className={`flex items-end gap-2 ${msg.role === "user" ? "flex-row-reverse" : "flex-row"}`}>
                 <div
-                  className={`max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-line ${
+                  className={`relative max-w-[85%] px-5 py-4 text-[13px] leading-relaxed shadow-sm transition-all hover:shadow-md ${
                     msg.role === "user"
-                      ? "bg-primary text-white rounded-br-md"
-                      : "bg-slate-100 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-md"
+                      ? "bg-gradient-to-br from-primary to-primary/80 text-white rounded-[1.5rem] rounded-br-[0.25rem] font-medium"
+                      : "bg-white dark:bg-slate-800/80 backdrop-blur-md border border-slate-100 dark:border-slate-700/50 text-slate-800 dark:text-slate-200 rounded-[1.5rem] rounded-bl-[0.25rem] font-medium"
                   }`}
                 >
                   {msg.role === "assistant" ? renderMarkdown(msg.content) : msg.content}
@@ -251,10 +245,12 @@ export function ChatBot({ onTransactionAdded }: { onTransactionAdded?: () => voi
             ))}
             {loading && (
               <div className="flex justify-start">
-                <div className="flex items-center gap-1.5 rounded-2xl rounded-bl-md bg-slate-100 dark:bg-slate-700 px-4 py-3">
-                  <span className="h-2 w-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: "0ms" }} />
-                  <span className="h-2 w-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: "150ms" }} />
-                  <span className="h-2 w-2 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: "300ms" }} />
+                <div className="flex items-center gap-2 rounded-[1.5rem] rounded-bl-[0.25rem] bg-white dark:bg-slate-800/80 backdrop-blur-md border border-slate-100 dark:border-slate-700/50 px-6 py-4">
+                  <div className="flex gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary/40 animate-bounce" style={{ animationDelay: "0ms" }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary/60 animate-bounce" style={{ animationDelay: "150ms" }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+                  </div>
                 </div>
               </div>
             )}
@@ -262,13 +258,13 @@ export function ChatBot({ onTransactionAdded }: { onTransactionAdded?: () => voi
 
           {/* Quick actions (show only at start) */}
           {messages.length <= 1 && !loading && (
-            <div className="flex flex-wrap gap-2 px-4 pb-2">
+            <div className="flex overflow-x-auto no-scrollbar gap-3 px-6 pb-6 animate-in fade-in slide-in-from-bottom-2 duration-500 delay-300 snap-x snap-mandatory">
               {QUICK_ACTIONS.map((action) => (
                 <button
                   key={action}
                   type="button"
                   onClick={() => sendMessage(action)}
-                  className="rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-medium text-primary dark:text-sky-400 transition hover:bg-primary/10 dark:border-primary/40 dark:bg-primary/10 dark:hover:bg-primary/20"
+                  className="shrink-0 snap-start rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800/40 px-5 py-3 text-[11px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 transition-all hover:border-primary/30 hover:bg-primary/5 hover:text-primary active:scale-95 shadow-sm whitespace-nowrap"
                 >
                   {action}
                 </button>
@@ -277,31 +273,31 @@ export function ChatBot({ onTransactionAdded }: { onTransactionAdded?: () => voi
           )}
 
           {/* Input */}
-          <div className="border-t border-border dark:border-slate-700 p-3">
+          <div className="border-t border-slate-100 dark:border-slate-800/80 bg-white/50 dark:bg-slate-900/50 p-4 sm:p-6">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 sendMessage(input);
               }}
-              className="flex items-center gap-2"
+              className="relative flex items-center gap-2"
             >
               <input
                 ref={inputRef}
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={loading ? "Menunggu jawaban..." : "Ketik pesan..."}
+                placeholder={loading ? "Menunggumu..." : "Bisikin keuanganmu di sini..."}
                 disabled={loading}
                 maxLength={500}
-                className="flex-1 rounded-xl border border-border dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-3.5 py-2.5 text-sm text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary/30 disabled:opacity-60"
+                className="flex-1 rounded-[1.5rem] border-2 border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-800/50 pl-6 pr-14 py-4 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-primary focus:ring-8 focus:ring-primary/5 outline-none transition-all disabled:opacity-60 font-medium"
               />
               <button
                 type="submit"
                 disabled={loading || !input.trim()}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary text-white transition hover:bg-primary/90 disabled:opacity-40"
+                className="absolute right-2 flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary text-white transition-all transform hover:scale-105 active:scale-90 disabled:opacity-30 shadow-lg shadow-primary/20"
                 aria-label="Kirim"
               >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
                 </svg>
               </button>

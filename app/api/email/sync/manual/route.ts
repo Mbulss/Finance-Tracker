@@ -43,15 +43,51 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. ACTION: PREVIEW TRANSACTIONS
-  if (!providerToken) {
-    return NextResponse.json({ error: "Tidak ada Token Google yang dikirim dari klien. Coba klik Hubungkan Ulang." }, { status: 400 });
+  let effectiveToken = providerToken;
+
+  if (!effectiveToken) {
+    // Try to get refresh token from database
+    const { data: integ } = await adminClient
+      .from("user_integrations")
+      .select("refresh_token")
+      .eq("user_id", user.id)
+      .eq("provider", "google")
+      .single();
+
+    if (integ?.refresh_token) {
+      try {
+        const response = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: process.env.GOOGLE_CLIENT_ID!,
+            client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+            refresh_token: integ.refresh_token,
+            grant_type: "refresh_token",
+          }),
+        });
+
+        const tokens = await response.json();
+        if (tokens.access_token) {
+          effectiveToken = tokens.access_token;
+        } else {
+          console.error("Failed to refresh token", tokens);
+        }
+      } catch (e) {
+        console.error("Refresh token exchange error", e);
+      }
+    }
+  }
+
+  if (!effectiveToken) {
+    return NextResponse.json({ error: "No Gmail connection active. Please reconnect." }, { status: 400 });
   }
 
   const gmailApi = "https://gmail.googleapis.com/gmail/v1/users/me/messages";
   const query = encodeURIComponent("from:(noreply.livin@bankmandiri.co.id OR bca.co.id) newer_than:1d");
   
   const listRes = await fetch(`${gmailApi}?q=${query}&maxResults=15`, {
-    headers: { Authorization: `Bearer ${providerToken}` },
+    headers: { Authorization: `Bearer ${effectiveToken}` },
   });
 
   if (!listRes.ok) {
@@ -85,7 +121,7 @@ export async function POST(req: NextRequest) {
   for (const msg of messages) {
     try {
     const msgRes = await fetch(`${gmailApi}/${msg.id}?format=full`, {
-      headers: { Authorization: `Bearer ${providerToken}` },
+      headers: { Authorization: `Bearer ${effectiveToken}` },
     });
     if (!msgRes.ok) continue;
     

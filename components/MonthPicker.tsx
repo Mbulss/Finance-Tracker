@@ -85,25 +85,25 @@ export function MonthPicker({ value, onChange, className = "" }: MonthPickerProp
     >
       <div className="mb-3 flex items-center justify-between">
         <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{year}</span>
-        <div className="flex gap-1">
+        <div className="flex gap-2">
           <button
             type="button"
             onClick={() => handleSelect(year - 1, month)}
-            className="rounded-lg p-1.5 text-muted hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            className="flex h-9 w-10 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-primary dark:hover:text-primary transition active:scale-90"
             aria-label="Tahun sebelumnya"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
           <button
             type="button"
             onClick={() => handleSelect(year + 1, month)}
-            className="rounded-lg p-1.5 text-muted hover:bg-slate-100 dark:hover:bg-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            className="flex h-9 w-10 items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 hover:text-primary dark:hover:text-primary transition active:scale-90"
             aria-label="Tahun berikutnya"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
             </svg>
           </button>
         </div>
@@ -140,21 +140,25 @@ export function MonthPicker({ value, onChange, className = "" }: MonthPickerProp
 
   return (
     <>
-      <div className={`relative ${className}`}>
+      <div className={`relative w-full ${className}`}>
         <button
           ref={buttonRef}
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex min-h-[44px] w-full sm:min-w-[160px] sm:w-auto items-center justify-between gap-2 rounded-xl border border-border dark:border-slate-600 bg-card dark:bg-slate-800 px-4 py-3 text-sm font-medium text-slate-800 dark:text-slate-100 shadow-sm transition hover:bg-slate-50 dark:hover:bg-slate-700 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          className={`flex h-full min-h-[44px] w-full items-center justify-between gap-2 rounded-xl px-4 py-3 text-sm font-black uppercase tracking-widest transition-all focus:outline-none ${
+            className.includes("border-none") 
+              ? "" 
+              : "border border-border dark:border-slate-600 bg-card dark:bg-slate-800 shadow-sm hover:bg-slate-50 dark:hover:bg-slate-700"
+          }`}
         >
-          <span className="capitalize">{label}</span>
+          <span className="truncate">{label}</span>
           <svg
             className={`h-4 w-4 shrink-0 text-muted dark:text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
           </svg>
         </button>
       </div>

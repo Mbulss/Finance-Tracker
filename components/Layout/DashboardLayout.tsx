@@ -16,8 +16,8 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
   return (
     <div className="min-h-screen bg-mesh">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      <main className="min-h-screen lg:pl-64">
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border dark:border-slate-700 bg-card/80 dark:bg-slate-800/80 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur-md sm:px-6 lg:hidden">
+      <main className="min-h-screen lg:pl-64 focus:outline-none">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border dark:border-slate-700 bg-card/80 dark:bg-slate-800/80 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur-md sm:px-6 lg:hidden transform-gpu">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
@@ -29,7 +29,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
             </svg>
           </button>
           <img src="/logo.png" alt="" className="h-8 w-8 rounded-lg object-contain" />
-          <span className="font-bold tracking-tight text-slate-800 dark:text-slate-100 truncate">Finance Tracker</span>
+          <span className="font-bold tracking-tight text-slate-800 dark:text-slate-100 truncate">Finance Tracker AI</span>
           <div className="ml-auto"><ThemeToggle /></div>
         </header>
         <div key={refreshKey} className="p-4 sm:p-6 lg:p-8 pb-[max(1rem,env(safe-area-inset-bottom))]">{children}</div>

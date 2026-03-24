@@ -67,113 +67,124 @@ export function TransactionTable({ transactions, onDelete, onEdit }: Transaction
 
   return (
     <>
-      <div className="mb-4 flex flex-col gap-3">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <span className="text-sm text-muted dark:text-slate-400">
-            Menampilkan{" "}
-            <span className="font-medium text-slate-700 dark:text-slate-300">
-              {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)}
-            </span>{" "}
-            dari <span className="font-medium text-slate-700 dark:text-slate-300">{filtered.length}</span> transaksi
-          </span>
-          <div className="flex rounded-xl bg-slate-100 dark:bg-slate-700 p-1 w-full sm:w-auto">
+      <div className="mb-8 flex flex-col gap-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex flex-col gap-1">
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+              Total {filtered.length} Transaksi ditemukan
+            </p>
+          </div>
+          <div className="grid grid-cols-3 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/50 border border-border/20 w-fit min-w-[240px]">
             {(["all", "income", "expense"] as const).map((type) => (
               <button
                 key={type}
                 type="button"
                 onClick={() => setTypeFilter(type)}
-                className={`flex-1 sm:flex-none min-h-[44px] rounded-lg px-4 py-2.5 text-sm font-medium transition ${
+                className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
                   typeFilter === type
-                    ? "bg-card dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow-sm"
-                    : "text-muted dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                    ? "bg-white dark:bg-slate-700 text-primary shadow-lg scale-[1.02]"
+                    : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-300"
                 }`}
               >
-                {type === "all" ? "Semua" : type === "income" ? "Pemasukan" : "Pengeluaran"}
+                {type === "all" ? "Semua" : type === "income" ? "Masuk" : "Keluar"}
               </button>
             ))}
           </div>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
-          <div className="relative min-w-0 flex-1 sm:min-w-[180px]">
-            <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+
+        <div className="grid grid-cols-1 sm:grid-cols-12 gap-4">
+          <div className="sm:col-span-8 relative">
+            <svg className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
             <input
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Cari catatan, kategori, atau nominal..."
-              className="w-full min-h-[48px] rounded-xl border border-border dark:border-slate-600 bg-card dark:bg-slate-800 dark:text-slate-100 py-3 pl-10 pr-4 text-base sm:text-sm placeholder:text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+              className="w-full h-14 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl pl-12 pr-4 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
             />
           </div>
-          <SelectDropdown
-            value={categoryFilter}
-            onChange={setCategoryFilter}
-            options={categories.map((c) => ({ value: c, label: c }))}
-            placeholder="Semua kategori"
-            className="w-full sm:w-auto"
-          />
+          <div className="sm:col-span-4">
+            <SelectDropdown
+              value={categoryFilter}
+              onChange={setCategoryFilter}
+              options={categories.map((c) => ({ value: c, label: c }))}
+              placeholder="Semua Kategori"
+              className="w-full h-14"
+            />
+          </div>
         </div>
       </div>
-      <div className="-mx-1 overflow-x-auto overflow-touch rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 shadow-card scrollbar-thin sm:mx-0" style={{ WebkitOverflowScrolling: "touch" }}>
-        <table className="w-full min-w-[640px] text-sm">
-          <thead>
-            <tr className="border-b border-border dark:border-slate-600 bg-slate-50/80 dark:bg-slate-700/50 text-left text-muted dark:text-slate-400">
-              <th className="px-3 py-3 font-medium sm:px-4 sm:py-3.5">Tanggal</th>
-              <th className="px-3 py-3 font-medium sm:px-4 sm:py-3.5">Tipe</th>
-              <th className="px-3 py-3 font-medium sm:px-4 sm:py-3.5">Jumlah</th>
-              <th className="hidden font-medium sm:table-cell sm:px-4 sm:py-3.5">Kategori</th>
-              <th className="px-3 py-3 font-medium sm:px-4 sm:py-3.5">Catatan</th>
-              <th className="w-20 px-3 py-3 text-right font-medium sm:w-24 sm:px-4 sm:py-3.5">Aksi</th>
-            </tr>
-          </thead>
-          <tbody>
-            {paginated.map((t) => (
-              <tr key={t.id} className="border-b border-border dark:border-slate-600 last:border-0 transition hover:bg-slate-50/50 dark:hover:bg-slate-700/50">
-                <td className="whitespace-nowrap px-3 py-3 text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3.5">{formatDate(t.created_at)}</td>
-                <td className="px-3 py-3 sm:px-4 sm:py-3.5">
-                  <span className={`font-medium ${t.type === "income" ? "text-income" : "text-expense"}`}>
-                    {t.type === "income" ? "Pemasukan" : "Pengeluaran"}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-3 py-3 font-medium tabular-nums sm:px-4 sm:py-3.5">
-                  <span className={t.type === "income" ? "text-income" : "text-expense"}>
-                    {t.type === "income" ? "+" : "-"}
-                    {formatCurrency(Number(t.amount))}
-                  </span>
-                </td>
-                <td className="hidden text-slate-700 dark:text-slate-300 sm:table-cell sm:px-4 sm:py-3.5">{t.category}</td>
-                <td className="max-w-[120px] truncate px-3 py-3 text-slate-600 dark:text-slate-400 sm:max-w-[200px] sm:px-4 sm:py-3.5">{t.note || "—"}</td>
-                <td className="px-2 py-3 text-right sm:px-4 sm:py-3.5">
-                  <div className="flex items-center justify-end gap-0.5 sm:gap-1">
-                    {!t.id.startsWith("opt-") && (
-                    <button
-                      type="button"
-                      onClick={() => setEditing(t)}
-                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-muted hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-600 dark:text-slate-400 dark:hover:text-primary transition active:scale-95"
-                      title="Edit"
-                    >
-                      <svg className="h-5 w-5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setDeleting(t)}
-                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-muted hover:bg-red-50 hover:text-expense dark:hover:bg-red-900/30 dark:text-slate-400 dark:hover:text-expense transition active:scale-95"
-                      title="Hapus"
-                    >
-                      <svg className="h-5 w-5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-                </td>
+      <div className="overflow-x-auto scrollbar-none -mx-6 sm:-mx-10">
+        <div className="inline-block min-w-full align-middle px-6 sm:px-10">
+          <table className="min-w-[640px] w-full text-sm">
+            <thead>
+              <tr className="text-left border-b border-border/50 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 text-slate-400">
+                <th className="px-4 py-4 font-black text-[10px] uppercase tracking-[0.2em] first:rounded-tl-2xl">Tanggal</th>
+                <th className="px-4 py-4 font-black text-[10px] uppercase tracking-[0.2em]">Tipe</th>
+                <th className="px-4 py-4 font-black text-[10px] uppercase tracking-[0.2em]">Jumlah</th>
+                <th className="hidden sm:table-cell px-4 py-4 font-black text-[10px] uppercase tracking-[0.2em]">Kategori</th>
+                <th className="px-4 py-4 font-black text-[10px] uppercase tracking-[0.2em]">Catatan</th>
+                <th className="px-4 py-4 font-black text-[10px] uppercase tracking-[0.2em] text-right last:rounded-tr-2xl">Aksi</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody className="divide-y divide-border/20 dark:divide-slate-700/50">
+              {paginated.map((t) => (
+                <tr key={t.id} className="group transition-all hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                  <td className="px-4 py-4 font-bold text-[10px] text-slate-400 uppercase tracking-tighter whitespace-nowrap">
+                     {formatDate(t.created_at)}
+                  </td>
+                  <td className="px-4 py-4">
+                    <div className="flex items-center gap-2">
+                      <div className={`h-8 w-8 flex items-center justify-center rounded-lg font-bold text-xs ${t.type === "income" ? "bg-income/10 text-income" : "bg-expense/10 text-expense"}`}>
+                        {t.type === "income" ? "↓" : "↑"}
+                      </div>
+                      <span className={`text-xs font-black uppercase tracking-widest ${t.type === "income" ? "text-income" : "text-expense"}`}>
+                        {t.type === "income" ? "Masuk" : "Keluar"}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-4 py-4 tabular-nums font-black text-sm">
+                     <span className={t.type === "income" ? "text-income" : "text-expense"}>
+                      {t.type === "income" ? "+" : "-"} {formatCurrency(Number(t.amount))}
+                    </span>
+                  </td>
+                  <td className="hidden sm:table-cell px-4 py-4">
+                    <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border border-slate-200/50 dark:border-slate-700/50">
+                      {t.category}
+                    </span>
+                  </td>
+                  <td className="px-4 py-4">
+                     <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 italic max-w-[150px] truncate" title={t.note || ""}>
+                       {t.note || "—"}
+                     </p>
+                  </td>
+                  <td className="px-4 py-4 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      {!t.id.startsWith("opt-") && (
+                      <button
+                        onClick={() => setEditing(t)}
+                        className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-primary/10 hover:text-primary text-slate-400 transition-all"
+                        title="Edit"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                      </button>
+                      )}
+                      <button
+                        onClick={() => setDeleting(t)}
+                        className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-expense/10 hover:text-expense text-slate-400 transition-all"
+                        title="Hapus"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
       {totalPages > 1 && (
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border dark:border-slate-600 pt-4">
@@ -185,17 +196,25 @@ export function TransactionTable({ transactions, onDelete, onEdit }: Transaction
               type="button"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={safePage <= 1}
-              className="min-h-[44px] rounded-xl border border-border dark:border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none transition"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-white/80 dark:bg-slate-800/50 backdrop-blur-md border border-border dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-sm transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-30 disabled:scale-95 active:scale-95"
+              title="Halaman Sebelumnya"
+              aria-label="Halaman Sebelumnya"
             >
-              Sebelumnya
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+              </svg>
             </button>
             <button
               type="button"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={safePage >= totalPages}
-              className="min-h-[44px] rounded-xl border border-border dark:border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none transition"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-white/80 dark:bg-slate-800/50 backdrop-blur-md border border-border dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-sm transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-30 disabled:scale-95 active:scale-95"
+              title="Halaman Selanjutnya"
+              aria-label="Halaman Selanjutnya"
             >
-              Selanjutnya
+              <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" />
+              </svg>
             </button>
           </div>
         </div>

@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { ConfirmModal } from "./ConfirmModal";
+import { useToast } from "./ToastContext";
+import { SelectDropdown } from "./SelectDropdown";
 
 const EXPENSE_CATEGORIES = ["Food", "Transport", "Shopping", "Bills", "Health", "Entertainment", "Other"];
 const INCOME_CATEGORIES = ["Salary", "Freelance", "Investment", "Gift", "Other"];
@@ -65,7 +67,7 @@ function HowItWorksModal({ open, onClose }: { open: boolean; onClose: () => void
         
         <div className="relative space-y-8">
           <div className="flex items-center justify-between">
-            <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Cara Pakai 🚀</h3>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Cara Pakai</h3>
             <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-400">
               <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
@@ -103,7 +105,6 @@ function HowItWorksModal({ open, onClose }: { open: boolean; onClose: () => void
 export function EmailSyncManager() {
   const [providerToken, setProviderToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState("");
   const [previewData, setPreviewData] = useState<PreviewItem[] | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Partial<PreviewItem>>({});
@@ -112,38 +113,40 @@ export function EmailSyncManager() {
   const [showHelpModal, setShowHelpModal] = useState(false);
 
   const supabase = createClient();
+  const { showToast } = useToast();
+
+  const fetchIntegration = useCallback(async (session: any) => {
+    if (!session) { setProviderToken(null); return; }
+    const isManualUnlink = localStorage.getItem("gmail_disconnected") === "true";
+    if (isManualUnlink) { setProviderToken(null); return; }
+    if (session.provider_token) setProviderToken(session.provider_token);
+    if (session.provider_refresh_token) {
+      try {
+        await fetch("/api/email/integration", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refresh_token: session.provider_refresh_token }),
+        });
+      } catch (e) { console.error("Failed to save refresh token", e); }
+    }
+    try {
+      const res = await fetch("/api/email/integration");
+      const json = await res.json();
+      if (!json.integrated && !session.provider_token) { setProviderToken(null); }
+    } catch (e) { console.error("Integration check failed", e); }
+  }, []);
 
   useEffect(() => {
     setMounted(true);
-    const checkIntegration = async (session: any) => {
-      if (!session) { setProviderToken(null); return; }
-      const isManualUnlink = localStorage.getItem("gmail_disconnected") === "true";
-      if (isManualUnlink) { setProviderToken(null); return; }
-      if (session.provider_token) setProviderToken(session.provider_token);
-      if (session.provider_refresh_token) {
-        try {
-          await fetch("/api/email/integration", {
-            method: "POST", headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ refresh_token: session.provider_refresh_token }),
-          });
-        } catch (e) { console.error("Failed to save refresh token", e); }
-      }
-      try {
-        const res = await fetch("/api/email/integration");
-        const json = await res.json();
-        if (!json.integrated && !session.provider_token) { setProviderToken(null); }
-      } catch (e) { console.error("Integration check failed", e); }
-    };
-    supabase.auth.getSession().then(({ data }) => checkIntegration(data.session));
+    supabase.auth.getSession().then(({ data }) => fetchIntegration(data.session));
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT") { setProviderToken(null); localStorage.removeItem("gmail_disconnected"); } 
-      else { checkIntegration(session); }
+      else { fetchIntegration(session); }
     });
     return () => subscription.unsubscribe();
-  }, [supabase]);
+  }, [supabase, fetchIntegration]);
 
   async function handleConnect() {
-    setMessage(""); setLoading(true);
+    setLoading(true);
     localStorage.removeItem("gmail_disconnected");
     await supabase.auth.signInWithOAuth({
       provider: "google",
@@ -157,18 +160,26 @@ export function EmailSyncManager() {
   }
 
   async function handleUnlink() {
-    setShowUnlinkModal(false); setLoading(true); setMessage("Memutuskan hubungan...");
+    setShowUnlinkModal(false); 
+    setLoading(true);
     try {
       const res = await fetch("/api/email/integration", { method: "DELETE" });
-      if (res.ok) { setProviderToken(null); localStorage.setItem("gmail_disconnected", "true"); setMessage("Berhasil memutuskan hubungan dengan Gmail."); } 
-      else { const json = await res.json(); setMessage("Gagal memutuskan hubungan: " + json.error); }
-    } catch (e: any) { setMessage("Error jaringan: " + e.message); }
+      if (res.ok) { 
+        setProviderToken(null); 
+        localStorage.setItem("gmail_disconnected", "true"); 
+        showToast("Berhasil memutuskan hubungan.");
+      } else { 
+        const json = await res.json(); 
+        showToast("Gagal memutuskan: " + json.error, "error"); 
+      }
+    } catch (e: any) { showToast("Error jaringan.", "error"); }
     setLoading(false);
   }
 
   async function handleSync() {
     if (!providerToken) return;
-    setLoading(true); setMessage("Sedang mengintip kotak masuk Gmail Anda...");
+    setLoading(true);
+    showToast("Mengintip kotak masuk Gmail...");
     try {
       const res = await fetch("/api/email/sync/manual", {
         method: "POST", headers: { "Content-Type": "application/json" },
@@ -176,28 +187,42 @@ export function EmailSyncManager() {
       });
       const json = await res.json();
       if (res.ok) {
-        if (json.preview.length === 0) { setMessage(`Selesai ngecek ${json.emailsChecked || 0} email bank terbaru. Tidak ditemukan struk BCA/Mandiri baru.`); } 
-        else { setPreviewData(json.preview); setMessage(""); }
+        if (json.preview.length === 0) { 
+           showToast(`Selesai ngecek ${json.emailsChecked || 0} email. Tidak ada struk baru.`); 
+        } else { 
+           setPreviewData(json.preview); 
+           showToast(`${json.preview.length} transaksi ditemukan!`, "success");
+        }
       } else {
-        if (res.status === 403 || (json.error && json.error.includes("scopes"))) { setMessage("⚠️ Izin Gmail Terbatas! Anda belum mencentang kotak 'Read your email' saat login Google tadi."); } 
-        else { setMessage(json.error || "Gagal menarik data."); }
+        if (res.status === 403 || (json.error && json.error.includes("scopes"))) { 
+           showToast("Izin Gmail Terbatas! Centang kotak 'Read your email' saat login.", "error"); 
+        } else { 
+           showToast(json.error || "Gagal menarik data.", "error"); 
+        }
         if (res.status === 401) setProviderToken(null);
       }
-    } catch (e: any) { setMessage("Terjadi kesalahan jaringan: " + e.message); }
+    } catch (e: any) { showToast("Gagal sinkron data.", "error"); }
     setLoading(false);
   }
 
   async function handleSavePreview() {
     if (!previewData) return;
-    setEditingId(null); setLoading(true); setMessage("Menyimpan ke Dashboard...");
+    setEditingId(null); 
+    setLoading(true);
     try {
       const res = await fetch("/api/email/sync/manual", {
-        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ transactionsToSave: previewData }),
+        method: "POST", 
+        headers: { "Content-Type": "application/json" }, 
+        body: JSON.stringify({ transactionsToSave: previewData }),
       });
       const json = await res.json();
-      if (res.ok) { setMessage(`Berhasil! ${json.insertedCount} transaksi telah tersimpan.`); setPreviewData(null); } 
-      else { setMessage("Gagal menyimpan: " + json.error); }
-    } catch (e: any) { setMessage("Error jaringan saat menyimpan: " + e.message); }
+      if (res.ok) { 
+        showToast(`Berhasil! ${json.insertedCount} transaksi disimpan.`, "success"); 
+        setPreviewData(null); 
+      } else { 
+        showToast("Gagal menyimpan: " + json.error, "error"); 
+      }
+    } catch (e: any) { showToast("Gagal memproses simpan.", "error"); }
     setLoading(false);
   }
 
@@ -207,8 +232,7 @@ export function EmailSyncManager() {
 
   const currentCategories = editValues.type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
-  if (!mounted) return null;
-
+  if (!mounted) return;
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-16 px-4">
       <HowItWorksModal open={showHelpModal} onClose={() => setShowHelpModal(false)} />
@@ -232,11 +256,11 @@ export function EmailSyncManager() {
                Email Automation System
             </div>
             <div className="space-y-2">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tighter leading-tight">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tighter leading-tight min-h-[80px] sm:min-h-[90px] lg:min-h-0 text-slate-900 dark:text-white">
                 <Typewriter phrases={["Hapus Capek Mengetik", "Bebas Salah Hitung", "Data Akurat & Otomatis"]} />
               </h1>
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tighter leading-tight animate-fade-in">
-                Biarkan <span className="text-primary underline decoration-primary/20 underline-offset-8">Auto-Sync</span> Bekerja.
+                Biarkan <span className="text-primary italic">Auto-Sync</span> Bekerja.
               </h1>
             </div>
             <p className="text-slate-500 dark:text-slate-400 font-medium text-lg leading-relaxed animate-fade-in [animation-delay:500ms]">
@@ -253,13 +277,35 @@ export function EmailSyncManager() {
           </div>
           <div className="shrink-0 relative mx-auto lg:mx-0 animate-float">
              <div className="absolute inset-0 bg-primary/20 rounded-full blur-[100px] animate-pulse" />
-             <div className="relative bg-white dark:bg-slate-800 p-8 sm:p-12 rounded-[3.5rem] shadow-2xl ring-1 ring-slate-100 dark:ring-slate-700">
-                <svg className="w-20 h-20 sm:w-24 sm:h-24 text-primary" viewBox="0 0 24 24" fill="currentColor">
-                   <path d="M24 4.5v15c0 .85-.65 1.5-1.5 1.5H21V7.38l-9 6.75-9-6.75V21H1.5c-.85 0-1.5-.65-1.5-1.5v-15c0-.4.15-.75.45-1.05.3-.3.65-.45 1.05-.45H3.1l8.9 6.7 8.9-6.7h1.65c.4 0 .75.15 1.05.45.3.3.45.65.45 1.05z" />
-                </svg>
-             </div>
+              <div className="relative bg-white dark:bg-slate-800 p-8 sm:p-12 rounded-[3.5rem] shadow-2xl ring-1 ring-slate-100 dark:ring-slate-700">
+                 <img src="/gmail logo.png" alt="Gmail" className="w-20 h-20 sm:w-24 sm:h-24 object-contain" />
+              </div>
           </div>
         </div>
+      </div>
+
+      {/* --- BETA ACCESS NOTICE --- */}
+      <div className="bg-amber-50/70 dark:bg-amber-500/5 border border-amber-200/60 dark:border-amber-900/40 rounded-[2.5rem] p-8 sm:p-10 flex flex-col lg:flex-row items-center justify-between gap-8 animate-fade-in-up [animation-delay:100ms] shadow-lg shadow-amber-900/5">
+         <div className="flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
+            <div className="w-16 h-16 rounded-[1.5rem] bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-400 flex items-center justify-center shrink-0 shadow-sm ring-2 ring-white dark:ring-slate-800 transition-transform hover:rotate-12">
+               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 17c-.77 1.333.192 3 1.732 3z" /></svg>
+            </div>
+            <div className="space-y-2">
+               <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Butuh Akses? Hubungi Admin @Mbulsssss</h3>
+               <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed max-w-xl">
+                  Karena sistem masih dalam tahap Private Testing, email kamu harus didaftarkan secara manual oleh Admin agar bisa login.
+               </p>
+            </div>
+         </div>
+         <a 
+            href="https://t.me/Mbulsssss" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="w-full lg:w-auto px-10 py-5 rounded-2xl bg-orange-600 text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-2xl shadow-orange-600/30 hover:bg-orange-700 hover:-translate-y-1 active:scale-95 transition-all text-center flex items-center justify-center gap-3"
+         >
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm3.224 17.862c-.104.002-.321-.023-.465-.14a.506.506 0 0 1-.171-.325c-.016-.093-.036-.306-.02-.472.18-1.898.962-6.502 1.36-8.627.168-.9.499-1.201.82-1.23.696-.065 1.225.46 1.9.902 1.056.693 1.653 1.124 2.678 1.8 1.185.78.417 1.21-.258 1.91-.177.184-3.247-2.977-3.307 3.23-.007.032-.014.15.056.212s.174.041.249.024c.106.024 1.793 1.14 5.061 3.345.48.33.913.49 1.302.48.428-.008 1.252-.241 1.865-.44.752-.245 1.349-.374 1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z" /></svg>
+            Chat Admin Sekarang
+         </a>
       </div>
 
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-12 items-stretch">
@@ -268,13 +314,13 @@ export function EmailSyncManager() {
            <section className="h-full bg-white dark:bg-slate-900 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 shadow-xl p-8 sm:p-10 relative overflow-hidden flex flex-col gap-6 hover:-translate-y-2 hover:shadow-2xl transition-all duration-300">
               <div className="absolute top-0 right-0 w-48 h-48 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
               
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                  <div className="space-y-1 text-left">
-                    <h2 className="text-2xl font-black text-slate-900 dark:text-white">Status Koneksi</h2>
+                    <h2 className="text-2xl font-black text-slate-900 dark:text-white leading-tight">Status Koneksi</h2>
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Kelola integrasi Gmail Anda di sini.</p>
                  </div>
-                 <button onClick={() => setShowHelpModal(true)} className="flex items-center gap-2 text-[11px] font-black text-primary bg-primary/5 hover:bg-primary/10 px-4 py-2.5 rounded-xl transition-all border border-primary/10">
-                    INFO PANDUAN ❓
+                 <button onClick={() => setShowHelpModal(true)} className="flex items-center justify-center gap-2 text-[11px] font-black text-primary bg-primary/5 hover:bg-primary/10 px-4 py-2.5 rounded-xl transition-all border border-primary/10 w-fit">
+                    INFO PANDUAN
                  </button>
               </div>
 
@@ -329,7 +375,9 @@ export function EmailSyncManager() {
               <div className="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
               <div className="relative space-y-6">
                  <div className="flex items-center gap-2">
-                    <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 flex items-center justify-center text-lg shadow-sm">🛡️</div>
+                    <div className="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-500/10 text-emerald-600 flex items-center justify-center shadow-sm">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                    </div>
                     <h3 className="text-xl font-black text-slate-900 dark:text-white">Data Security</h3>
                  </div>
                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed text-left">
@@ -357,14 +405,6 @@ export function EmailSyncManager() {
         </div>
       </div>
 
-      {message && (
-        <div className="fixed bottom-10 left-1/2 -translate-x-1/2 z-50 px-6 sm:px-0 w-full sm:w-auto">
-           <div className="bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-5 rounded-[2rem] shadow-2xl flex items-center gap-4 animate-in slide-in-from-bottom-5">
-              <span className="text-xl">💡</span>
-              <p className="text-sm font-black uppercase tracking-tight text-left">{message}</p>
-           </div>
-        </div>
-      )}
 
       {/* --- PREVIEW MODAL --- */}
       {previewData && (
@@ -393,7 +433,16 @@ export function EmailSyncManager() {
                       </div>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                         <div className="space-y-1.5"><label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 ml-1">Merchant</label><input type="text" value={editValues.merchantName} onChange={(e) => setEditValues(v => ({ ...v, merchantName: e.target.value }))} className="w-full rounded-2xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 dark:text-white text-sm p-4 font-black focus:ring-4 focus:ring-primary/10 transition-all outline-none" /></div>
-                        <div className="space-y-1.5"><label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 ml-1">Kategori</label><select value={editValues.category} onChange={(e) => setEditValues(v => ({ ...v, category: e.target.value }))} className="w-full rounded-2xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 dark:text-white text-sm p-4 font-black focus:ring-4 focus:ring-primary/10 transition-all outline-none h-[56px] appearance-none leading-none">{currentCategories.map(c => <option key={c} value={c}>{c}</option>)}</select></div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 ml-1">Kategori</label>
+                          <SelectDropdown
+                            value={editValues.category ?? ""}
+                            onChange={(val) => setEditValues(v => ({ ...v, category: val }))}
+                            options={currentCategories.map(c => ({ value: c, label: c.toUpperCase() }))}
+                            placeholder="Kategori"
+                            className="w-full h-[56px]"
+                          />
+                        </div>
                       </div>
                       <div className="flex flex-col sm:flex-row items-end gap-4">
                         <div className="w-full space-y-1.5"><label className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 ml-1">Nominal (Rp)</label><input type="number" value={editValues.amount} onChange={(e) => setEditValues(v => ({ ...v, amount: Number(e.target.value) }))} className="w-full rounded-2xl border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 dark:text-white text-3xl p-4 font-black focus:ring-4 focus:ring-primary/10 transition-all outline-none" /></div>

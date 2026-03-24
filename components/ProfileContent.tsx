@@ -1,11 +1,48 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 interface ProfileContentProps {
   email: string;
   isGoogleUser?: boolean;
+}
+
+// --- ANIMATED TYPEWRITER COMPONENT ---
+function Typewriter({ phrases }: { phrases: string[] }) {
+  const [index, setIndex] = useState(0);
+  const [displayText, setDisplayText] = useState("");
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [speed, setSpeed] = useState(150);
+
+  useEffect(() => {
+    const handleType = () => {
+      const fullText = phrases[index];
+      setDisplayText(
+        isDeleting
+          ? fullText.substring(0, displayText.length - 1)
+          : fullText.substring(0, displayText.length + 1)
+      );
+
+      if (!isDeleting && displayText === fullText) {
+        setTimeout(() => setIsDeleting(true), 1500);
+        setSpeed(100);
+      } else if (isDeleting && displayText === "") {
+        setIsDeleting(false);
+        setIndex((prev) => (prev + 1) % phrases.length);
+        setSpeed(150);
+      }
+    };
+
+    const timer = setTimeout(handleType, speed);
+    return () => clearTimeout(timer);
+  }, [displayText, isDeleting, index, phrases, speed]);
+
+  return (
+    <span className="text-slate-900 dark:text-white border-r-4 border-primary animate-blink pr-2">
+      {displayText}
+    </span>
+  );
 }
 
 export function ProfileContent({ email, isGoogleUser = false }: ProfileContentProps) {
@@ -37,7 +74,7 @@ export function ProfileContent({ email, isGoogleUser = false }: ProfileContentPr
       setMessage({ type: "success", text: "Password berhasil dibuat. Sekarang kamu bisa masuk dengan email + password juga." });
       setPassword("");
       setConfirmPassword("");
-    } catch (err: unknown) {
+    } catch (err: any) {
       setMessage({
         type: "error",
         text: err instanceof Error ? err.message : "Gagal membuat password.",
@@ -76,7 +113,7 @@ export function ProfileContent({ email, isGoogleUser = false }: ProfileContentPr
       setOldPassword("");
       setPassword("");
       setConfirmPassword("");
-    } catch (err: unknown) {
+    } catch (err: any) {
       setMessage({
         type: "error",
         text: err instanceof Error ? err.message : "Gagal mengubah password.",
@@ -87,246 +124,177 @@ export function ProfileContent({ email, isGoogleUser = false }: ProfileContentPr
   }
 
   return (
-    <div className="space-y-8">
-      <section className="rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 p-4 shadow-card sm:p-6">
-        <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">
-          <span className="text-xl" aria-hidden>👤</span>
-          Info Akun
-        </h2>
-        <dl className="space-y-2">
-          <div>
-            <dt className="text-sm font-medium text-muted dark:text-slate-400">Email</dt>
-            <dd className="mt-0.5 text-slate-800 dark:text-slate-200">{email}</dd>
+    <div className="space-y-12">
+      {/* --- HERO SECTION --- */}
+      <div className="relative overflow-hidden rounded-[2.5rem] sm:rounded-[3.5rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-8 sm:p-14 lg:p-16 animate-fade-in-up">
+        <div className="absolute -top-32 -right-32 w-80 h-80 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-primary/10 rounded-full blur-[120px] pointer-events-none opacity-40 dark:opacity-20" />
+        
+        <div className="relative z-10 flex flex-col lg:flex-row items-center justify-between gap-12 text-center lg:text-left">
+          <div className="space-y-8 flex-1">
+            <div className="space-y-6">
+               <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-black uppercase tracking-[0.25em] border border-slate-200 dark:border-slate-700 mx-auto lg:mx-0 shadow-sm">
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                  Keamanan & Profil 🔒
+               </div>
+               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tighter leading-tight">
+                 Akun Kamu.
+               </h1>
+               <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto lg:mx-0 font-medium text-lg leading-relaxed">
+                 Kelola informasi akun dan tingkatkan keamanan akses Anda. Data Anda tersimpan aman dan terenkripsi menggunakan teknologi Supabase.
+               </p>
+            </div>
           </div>
-        </dl>
-      </section>
 
-      {isGoogleUser ? (
-        <section className="rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 p-4 shadow-card sm:p-6">
-          <h2 className="mb-2 flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">
-            <span className="text-xl" aria-hidden>🔑</span>
-            Buat password (opsional)
-          </h2>
-          <p className="mb-4 text-sm text-muted dark:text-slate-400">
-            Kamu masuk dengan Google jadi belum punya password. Kalau mau bisa login pakai email + password juga, buat password di bawah.
-          </p>
-          {message && (
-            <p
-              className={`mb-4 rounded-lg px-3 py-2 text-sm ${message.type === "success" ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400" : "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"}`}
-              role="alert"
-            >
-              {message.text}
-            </p>
-          )}
-          <form onSubmit={handleSetPassword} className="space-y-4 max-w-md">
-            <div>
-              <label htmlFor="set-password" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Password baru
-              </label>
-              <div className="relative mt-1">
-                <input
-                  id="set-password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-lg border border-border dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 pr-10 text-slate-800 dark:text-slate-100 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                  placeholder="Min. 6 karakter"
-                  minLength={6}
-                  autoComplete="new-password"
-                  disabled={loading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-600 dark:hover:text-slate-200"
-                  aria-label={showPassword ? "Sembunyikan" : "Tampilkan"}
-                >
-                  {showPassword ? (
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
+          <div className="shrink-0 relative group animate-float mx-auto lg:mx-0">
+             <div className="absolute inset-0 bg-primary/20 rounded-full blur-[60px] group-hover:scale-110 transition-transform duration-700" />
+             <div className="relative bg-white dark:bg-slate-800 p-8 sm:p-12 rounded-[3.5rem] shadow-2xl ring-2 ring-slate-100 dark:ring-slate-800">
+                <div className="text-5xl sm:text-7xl">👤</div>
+                <div className="absolute -bottom-2 -right-2 bg-primary text-white p-3 rounded-2xl shadow-lg">
+                   <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                </div>
+             </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-stretch">
+        {/* --- INFO AKUN CARD --- */}
+        <section className="group relative flex flex-col rounded-[2.5rem] sm:rounded-[3.5rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 sm:p-12 shadow-xl transition-all hover:-translate-y-1.5 hover:shadow-2xl animate-fade-in-up [animation-delay:200ms]">
+          <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full blur-[100px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+          
+          <div className="relative flex flex-col gap-10 h-full">
+            <div className="space-y-8 flex-1">
+              <div className="flex items-center gap-5">
+                <span className="flex h-16 w-16 items-center justify-center rounded-[1.75rem] bg-slate-50 dark:bg-slate-800 text-3xl shadow-sm ring-1 ring-slate-100 dark:ring-slate-700/50 group-hover:rotate-12 transition-transform">📧</span>
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white leading-none">Info Akun</h2>
+                  <p className="text-[10px] sm:text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.25em] mt-2">Personal Identity</p>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="p-6 rounded-3xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 group-hover:border-primary/20 transition-all">
+                  <p className="text-xs font-black text-slate-400 dark:text-slate-500 mb-2 uppercase tracking-widest">Email Address</p>
+                  <p className="text-lg font-bold text-slate-800 dark:text-slate-200 break-all">{email}</p>
+                </div>
+
+                <div className="flex items-center gap-4 p-5 rounded-[2rem] bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                  <span className="text-xl">🛡️</span>
+                  <div className="space-y-0.5">
+                    <p className="text-xs font-black uppercase tracking-widest">Status Keamanan</p>
+                    <p className="text-sm font-bold">Terproteksi SSL & AES-256</p>
+                  </div>
+                </div>
               </div>
             </div>
-            <div>
-              <label htmlFor="set-confirm-password" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Konfirmasi password
-              </label>
-              <div className="relative mt-1">
-                <input
-                  id="set-confirm-password"
-                  type={showConfirmPassword ? "text" : "password"}
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full rounded-lg border border-border dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 pr-10 text-slate-800 dark:text-slate-100 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                  placeholder="Ulangi password"
-                  minLength={6}
-                  autoComplete="new-password"
-                  disabled={loading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPassword((v) => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-600 dark:hover:text-slate-200"
-                  aria-label={showConfirmPassword ? "Sembunyikan" : "Tampilkan"}
-                >
-                  {showConfirmPassword ? (
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                    </svg>
-                  ) : (
-                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                    </svg>
-                  )}
-                </button>
-              </div>
+
+            <div className="pt-8 border-t border-slate-100 dark:border-slate-800">
+              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium leading-relaxed italic">
+                Tips: Jaga kerahasiaan password Anda dan jangan gunakan password yang sama dengan layanan lain.
+              </p>
             </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-primary/90 disabled:opacity-50"
-            >
-              {loading ? "Memproses..." : "Buat password"}
-            </button>
-          </form>
+          </div>
         </section>
-      ) : (
-        <section className="rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 p-4 shadow-card sm:p-6">
-          <h2 className="mb-4 flex items-center gap-2 text-base font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">
-            <span className="text-xl" aria-hidden>🔒</span>
-            Ubah Password
-          </h2>
-          {message && (
-            <p
-              className={`mb-4 rounded-lg px-3 py-2 text-sm ${message.type === "success" ? "bg-green-50 text-green-700 dark:bg-green-900/20 dark:text-green-400" : "bg-red-50 text-red-700 dark:bg-red-900/20 dark:text-red-400"}`}
-              role="alert"
-            >
-              {message.text}
-            </p>
-          )}
-          <form onSubmit={handleChangePassword} className="space-y-4 max-w-md">
-            <div>
-              <label htmlFor="old-password" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                Password lama
-              </label>
-            <div className="relative mt-1">
-              <input
-                id="old-password"
-                type={showOldPassword ? "text" : "password"}
-                value={oldPassword}
-                onChange={(e) => setOldPassword(e.target.value)}
-                className="w-full rounded-lg border border-border dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 pr-10 text-slate-800 dark:text-slate-100 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                placeholder="Masukkan password saat ini"
-                autoComplete="current-password"
-                disabled={loading}
-              />
-              <button
-                type="button"
-                onClick={() => setShowOldPassword((v) => !v)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-600 dark:hover:text-slate-200"
-                aria-label={showOldPassword ? "Sembunyikan" : "Tampilkan"}
-              >
-                {showOldPassword ? (
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                  </svg>
-                ) : (
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
+
+        {/* --- SECURITY & PASSWORD CARD --- */}
+        <section className="group relative flex flex-col rounded-[2.5rem] sm:rounded-[3.5rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 sm:p-12 shadow-xl transition-all hover:-translate-y-1.5 hover:shadow-2xl animate-fade-in-up [animation-delay:400ms]">
+          <div className="relative flex flex-col gap-10 h-full">
+            <div className="space-y-8 flex-1">
+              <div className="flex items-center gap-5">
+                <span className="flex h-16 w-16 items-center justify-center rounded-[1.75rem] bg-primary/10 text-primary text-3xl shadow-sm ring-1 ring-primary/10 group-hover:rotate-12 transition-transform">🔑</span>
+                <div className="space-y-1">
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white leading-none">
+                    {isGoogleUser ? "Buat Password" : "Ubah Password"}
+                  </h2>
+                  <p className="text-[10px] sm:text-xs font-black text-primary uppercase tracking-[0.25em] mt-2">Security Center</p>
+                </div>
+              </div>
+
+              {isGoogleUser && (
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium leading-relaxed">
+                  Kamu masuk dengan Google. Buat password baru jika ingin login menggunakan Email + Password juga.
+                </p>
+              )}
+
+              {message && (
+                <div className={`p-4 rounded-2xl flex items-center gap-3 animate-in slide-in-from-top-2 duration-200 ${
+                  message.type === "success" 
+                    ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400" 
+                    : "bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400"
+                }`}>
+                  <span className="text-lg">{message.type === "success" ? "✅" : "❌"}</span>
+                  <p className="text-sm font-black">{message.text}</p>
+                </div>
+              )}
+
+              <form onSubmit={isGoogleUser ? handleSetPassword : handleChangePassword} className="space-y-5">
+                {!isGoogleUser && (
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Password Lama</label>
+                    <div className="relative">
+                      <input
+                        type={showOldPassword ? "text" : "password"}
+                        value={oldPassword}
+                        onChange={(e) => setOldPassword(e.target.value)}
+                        className="w-full pl-6 pr-12 py-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 text-slate-900 dark:text-white font-bold text-sm focus:border-primary focus:ring-8 focus:ring-primary/5 outline-none transition-all placeholder:text-slate-400"
+                        placeholder="Masukkan password saat ini"
+                        disabled={loading}
+                      />
+                      <button type="button" onClick={() => setShowOldPassword(!showOldPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors">
+                        {showOldPassword ? "🫣" : "👁️"}
+                      </button>
+                    </div>
+                  </div>
                 )}
-              </button>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Password Baru</label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full pl-6 pr-12 py-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 text-slate-900 dark:text-white font-bold text-sm focus:border-primary focus:ring-8 focus:ring-primary/5 outline-none transition-all placeholder:text-slate-400"
+                      placeholder="Minimal 6 karakter"
+                      disabled={loading}
+                    />
+                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors">
+                      {showPassword ? "🫣" : "👁️"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Konfirmasi Password</label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? "text" : "password"}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="w-full pl-6 pr-12 py-4 rounded-2xl border-2 border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/30 text-slate-900 dark:text-white font-bold text-sm focus:border-primary focus:ring-8 focus:ring-primary/5 outline-none transition-all placeholder:text-slate-400"
+                      placeholder="Konfirmasi password baru"
+                      disabled={loading}
+                    />
+                    <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors">
+                      {showConfirmPassword ? "🫣" : "👁️"}
+                    </button>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={loading}
+                  className="w-full py-5 rounded-[2rem] bg-primary text-white font-black hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-primary/25 disabled:opacity-50 relative overflow-hidden group/btn mt-4"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover/btn:animate-shimmer" />
+                  {loading ? "MEMPROSES..." : isGoogleUser ? "BUAT PASSWORD SEKARANG" : "SIMPAN PERUBAHAN"}
+                </button>
+              </form>
             </div>
           </div>
-          <div>
-            <label htmlFor="new-password" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Password baru
-            </label>
-            <div className="relative mt-1">
-              <input
-                id="new-password"
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full rounded-lg border border-border dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 pr-10 text-slate-800 dark:text-slate-100 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                placeholder="Min. 6 karakter"
-                minLength={6}
-                autoComplete="new-password"
-                disabled={loading}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((v) => !v)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-600 dark:hover:text-slate-200"
-                aria-label={showPassword ? "Sembunyikan" : "Tampilkan"}
-              >
-                {showPassword ? (
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                  </svg>
-                ) : (
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
-          <div>
-            <label htmlFor="confirm-password" className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Konfirmasi password baru
-            </label>
-            <div className="relative mt-1">
-              <input
-                id="confirm-password"
-                type={showConfirmPassword ? "text" : "password"}
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full rounded-lg border border-border dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2 pr-10 text-slate-800 dark:text-slate-100 shadow-sm focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-                placeholder="Ulangi password baru"
-                minLength={6}
-                autoComplete="new-password"
-                disabled={loading}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword((v) => !v)}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1.5 text-slate-500 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-600 dark:hover:text-slate-200"
-                aria-label={showConfirmPassword ? "Sembunyikan" : "Tampilkan"}
-              >
-                {showConfirmPassword ? (
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-                  </svg>
-                ) : (
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                  </svg>
-                )}
-              </button>
-            </div>
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-white shadow-sm transition hover:bg-primary/90 disabled:opacity-50"
-          >
-            {loading ? "Memproses..." : "Ubah password"}
-          </button>
-        </form>
-      </section>
-      )}
+        </section>
+      </div>
     </div>
   );
 }

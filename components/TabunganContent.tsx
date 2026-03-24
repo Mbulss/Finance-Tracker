@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, formatDate, formatShortDate, parseAmountInput, formatAmountDisplay } from "@/lib/utils";
 import { useToast } from "@/components/ToastContext";
@@ -9,6 +9,8 @@ import { CountUp } from "@/components/CountUp";
 import { SkeletonCard, Skeleton } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { EditSavingsEntryModal } from "@/components/EditSavingsEntryModal";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip, Legend as ReLegend } from "recharts";
+import { SelectDropdown } from "./SelectDropdown";
 
 export interface SavingsEntry {
   id: string;
@@ -119,9 +121,10 @@ function fileToBase64(file: File): Promise<string> {
 
 interface TabunganContentProps {
   userId: string;
+  initialTelegramLinked?: boolean;
 }
 
-export function TabunganContent({ userId }: TabunganContentProps) {
+export function TabunganContent({ userId, initialTelegramLinked = false }: TabunganContentProps) {
   const [entries, setEntries] = useState<SavingsEntry[]>([]);
   const [pots, setPots] = useState<SavingsPot[]>([]);
   const [reminder, setReminder] = useState<SavingsReminder | null>(null);
@@ -155,8 +158,11 @@ export function TabunganContent({ userId }: TabunganContentProps) {
   const [transferLoading, setTransferLoading] = useState(false);
   const [transferError, setTransferError] = useState("");
   const [riwayatPage, setRiwayatPage] = useState(1);
+  const [activeTab, setActiveTab] = useState<"setor" | "pindah">("setor");
+  const [isTelegramLinked, setIsTelegramLinked] = useState<boolean>(initialTelegramLinked);
   const supabase = createClient();
   const { showToast } = useToast();
+
 
   const RIWAYAT_PAGE_SIZE = 15;
   const displayedEntries = [...entries, ...optimisticEntries]
@@ -206,6 +212,17 @@ export function TabunganContent({ userId }: TabunganContentProps) {
     setPots((data as SavingsPot[]) ?? []);
   }, [supabase, userId]);
 
+  const fetchProfile = useCallback(async () => {
+    // telegram_links has RLS blocking client reads, use server API instead
+    try {
+      const res = await fetch("/api/telegram/status");
+      if (res.ok) {
+        const json = await res.json();
+        setIsTelegramLinked(json.linked === true);
+      }
+    } catch { /* ignore */ }
+  }, []);
+
   const fetchReminder = useCallback(async () => {
     const { data } = await supabase
       .from("savings_reminders")
@@ -222,6 +239,7 @@ export function TabunganContent({ userId }: TabunganContentProps) {
       fetchEntries(),
       fetchPots().catch(() => setPots([])),
       fetchReminder().catch(() => setReminder({ user_id: userId, enabled: false, day_of_week: 1 })),
+      fetchProfile().catch(() => setIsTelegramLinked(false)),
     ]).then(() => {
       if (!cancelled) setLoading(false);
     });
@@ -242,12 +260,22 @@ export function TabunganContent({ userId }: TabunganContentProps) {
         fetchPots
       )
       .subscribe();
+    const channelProfile = supabase
+      .channel(`telegram_links:${userId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "telegram_links", filter: `user_id=eq.${userId}` },
+        fetchProfile
+      )
+      .subscribe();
+
     return () => {
       cancelled = true;
       supabase.removeChannel(channel);
       supabase.removeChannel(channelPots);
+      supabase.removeChannel(channelProfile);
     };
-  }, [fetchEntries, fetchPots, fetchReminder, supabase, userId]);
+  }, [fetchEntries, fetchPots, fetchReminder, fetchProfile, supabase, userId]);
 
   useEffect(() => {
     if (pots.length > 0 && !transferTo) setTransferTo(pots[0].id);
@@ -404,6 +432,37 @@ export function TabunganContent({ userId }: TabunganContentProps) {
     showToast("Riwayat diperbarui");
   }
 
+  async function handleReorder(potId: string, direction: "up" | "down") {
+    const idx = pots.findIndex((p) => p.id === potId);
+    if (idx === -1) return;
+    const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= pots.length) return;
+
+    const potA = pots[idx];
+    const potB = pots[targetIdx];
+
+    // Optimistic update
+    const newPots = [...pots];
+    newPots[idx] = { ...potB, sort_order: potA.sort_order };
+    newPots[targetIdx] = { ...potA, sort_order: potB.sort_order };
+    setPots(newPots);
+
+    try {
+      const { error: err1 } = await supabase
+        .from("savings_pots")
+        .update({ sort_order: potB.sort_order })
+        .eq("id", potA.id);
+      const { error: err2 } = await supabase
+        .from("savings_pots")
+        .update({ sort_order: potA.sort_order })
+        .eq("id", potB.id);
+      if (err1 || err2) throw err1 || err2;
+    } catch {
+      showToast("Gagal mengubah urutan", "error");
+      fetchPots();
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -431,148 +490,268 @@ export function TabunganContent({ userId }: TabunganContentProps) {
     <div className="space-y-6">
       {showReminderBanner && (
         <div className="rounded-xl border border-primary/30 bg-primary/10 dark:bg-primary/20 px-4 py-3 text-sm text-slate-800 dark:text-slate-200 flex items-center gap-2">
-          <span className="text-lg">🐷</span>
+          <svg className="h-5 w-5 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           <span><strong>Pengingat setor:</strong> Jangan lupa setor tabungan hari ini. Kamu juga dapat pesan di Telegram kalau akun sudah di-link.</span>
         </div>
       )}
 
-      {/* Saldo total + Total Setor + Total Tarik (format mirip dashboard) */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4">
-        <section className="relative overflow-hidden rounded-2xl border-2 border-primary/20 dark:border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10 dark:from-primary/10 dark:to-primary/20 p-4 shadow-card transition-shadow hover:shadow-card-hover sm:p-6">
-          <div className="absolute right-0 top-0 h-24 w-24 translate-x-4 -translate-y-4 rounded-full bg-primary/10 dark:bg-primary/20 blur-xl" aria-hidden />
-          <div className="relative flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-muted dark:text-slate-400">Saldo tabungan total</p>
-              <p className={`mt-1 text-xl font-bold font-mono tabular-nums sm:text-2xl ${totalBalance >= 0 ? "text-slate-800 dark:text-slate-100" : "text-expense"}`}>
-                <CountUp value={totalBalance} formatter={(n) => formatCurrency(n)} />
-              </p>
+      {/* Overview Section: Stats + Distribution Chart */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-stretch">
+        <div className="lg:col-span-8 flex flex-col gap-4 h-full">
+          <section className="flex-1 relative overflow-hidden rounded-[2.5rem] border border-primary/20 dark:border-primary/40 bg-white dark:bg-slate-900 p-6 shadow-glow dark:shadow-glow-dark transition-all hover:shadow-2xl sm:p-8 flex flex-col justify-center group">
+            {/* Premium Decorative Blobs */}
+            <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/20 dark:bg-primary/30 blur-[100px] pointer-events-none transition-transform group-hover:scale-110" aria-hidden />
+            <div className="absolute -left-20 -bottom-20 h-48 w-48 rounded-full bg-primary/10 dark:bg-primary/20 blur-[80px] pointer-events-none transition-transform group-hover:scale-110" aria-hidden />
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-50 pointer-events-none" />
+            <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] sm:text-sm font-bold uppercase tracking-[0.15em] text-primary/80 dark:text-sky-400/80">Total Saldo Tabungan</p>
+                <div className={`mt-1 sm:mt-2 flex items-baseline gap-2 text-2xl sm:text-4xl lg:text-5xl font-black tabular-nums tracking-tighter break-words ${totalBalance >= 0 ? "text-slate-900 dark:text-white" : "text-expense"}`}>
+                  <CountUp value={totalBalance} formatter={(n) => formatCurrency(n)} />
+                </div>
+                <p className="mt-2 text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 opacity-90">
+                  <span className="inline-flex h-2 w-2 rounded-full bg-primary" />
+                  Seluruh tabungan di semua celengan
+                </p>
+              </div>
+              <div className="hidden xs:flex h-12 w-12 sm:h-16 sm:w-16 shrink-0 items-center justify-center rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 shadow-soft ring-1 ring-black/5 dark:ring-white/5">
+                <svg className="h-6 w-6 sm:h-8 sm:w-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
             </div>
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 dark:bg-primary/25 sm:h-12 sm:w-12 ring-2 ring-primary/20 dark:ring-primary/30">
-              <svg className="h-6 w-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
+          </section>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <section className="group relative overflow-hidden rounded-2xl border border-border/50 dark:border-slate-700/50 bg-card dark:bg-slate-800/50 p-5 shadow-soft transition-all hover:shadow-card-hover hover:-translate-y-1">
+              <div className="absolute right-0 top-0 h-16 w-16 translate-x-4 -translate-y-4 rounded-full bg-income/5 transition-transform group-hover:scale-150" />
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted dark:text-slate-400">Total Setor</p>
+                  <p className="mt-1 text-lg sm:text-2xl font-black tabular-nums text-income break-words leading-tight">
+                    <CountUp value={totalSetor} formatter={(n) => formatCurrency(n)} />
+                  </p>
+                </div>
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-income/10 text-income ring-1 ring-income/20">
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                </div>
+              </div>
+            </section>
+
+            <section className="group relative overflow-hidden rounded-2xl border border-border/50 dark:border-slate-700/50 bg-card dark:bg-slate-800/50 p-5 shadow-soft transition-all hover:shadow-card-hover hover:-translate-y-1">
+              <div className="absolute right-0 top-0 h-16 w-16 translate-x-4 -translate-y-4 rounded-full bg-expense/5 transition-transform group-hover:scale-150" />
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-wider text-muted dark:text-slate-400">Total Tarik</p>
+                  <p className="mt-1 text-lg sm:text-2xl font-black tabular-nums text-expense break-words leading-tight">
+                    <CountUp value={totalTarik} formatter={(n) => formatCurrency(n)} />
+                  </p>
+                </div>
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-expense/10 text-expense ring-1 ring-expense/20">
+                  <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
+                  </svg>
+                </div>
+              </div>
+            </section>
           </div>
-        </section>
-        <section className="rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 p-4 shadow-card transition-shadow hover:shadow-card-hover dark:hover:shadow-card-hover sm:p-6">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-muted dark:text-slate-400">Total Setor</p>
-              <p className="mt-1 text-xl font-bold font-mono tabular-nums text-income sm:text-2xl">
-                <CountUp value={totalSetor} formatter={(n) => formatCurrency(n)} />
-              </p>
-            </div>
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-income/10 sm:h-12 sm:w-12">
-              <svg className="h-6 w-6 text-income" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
-            </div>
+        </div>
+
+        {/* Distribution Chart */}
+        <section className="lg:col-span-4 flex flex-col rounded-[2rem] border border-border/50 dark:border-slate-700 bg-white/50 dark:bg-slate-900/50 p-6 backdrop-blur-xl shadow-xl relative overflow-hidden group">
+          <div className="absolute -top-12 -right-12 w-32 h-32 bg-primary/10 rounded-full blur-3xl pointer-events-none group-hover:scale-125 transition-transform" />
+          <h3 className="relative z-10 text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200 mb-4">Distribusi Celengan</h3>
+          <div className="flex-1 min-h-[220px] relative">
+            {totalBalance > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={[
+                      { name: "Umum", value: Math.max(0, balanceByPot["__umum__"] ?? 0) },
+                      ...pots.map(p => ({ name: p.name, value: Math.max(0, balanceByPot[p.id] ?? 0) }))
+                    ].filter(d => d.value > 0)}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {[
+                      "#0ea5e9", // primary
+                      "#059669", // income
+                      "#8b5cf6", // purple
+                      "#f59e0b", // amber
+                      "#ec4899", // pink
+                      "#06b6d4", // cyan
+                    ].map((color, index) => (
+                      <Cell key={`cell-${index}`} fill={color} strokeWidth={0} />
+                    ))}
+                  </Pie>
+                  <ReTooltip
+                    contentStyle={{
+                      backgroundColor: "rgba(255, 255, 255, 0.9)",
+                      borderRadius: "12px",
+                      border: "none",
+                      boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
+                      fontSize: "12px",
+                      fontWeight: "bold",
+                      color: "#1e293b"
+                    }}
+                    formatter={(value: number) => formatCurrency(value)}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full text-center space-y-2 opacity-40">
+                <div className="h-16 w-16 rounded-full border-4 border-dashed border-slate-300 dark:border-slate-600 animate-[spin_10s_linear_infinite]" />
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-widest">Belum ada saldo</p>
+              </div>
+            )}
           </div>
-        </section>
-        <section className="rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 p-4 shadow-card transition-shadow hover:shadow-card-hover dark:hover:shadow-card-hover sm:p-6">
-          <div className="flex items-center justify-between">
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-muted dark:text-slate-400">Total Tarik</p>
-              <p className="mt-1 text-xl font-bold font-mono tabular-nums text-expense sm:text-2xl">
-                <CountUp value={totalTarik} formatter={(n) => formatCurrency(n)} />
-              </p>
+          {totalBalance > 0 && (
+            <div className="mt-4 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-2 lg:grid-cols-2 gap-x-4 gap-y-2">
+              {[
+                { name: "Umum", val: Math.max(0, balanceByPot["__umum__"] ?? 0), color: "#0ea5e9" },
+                ...pots.map((p, i) => ({
+                  name: p.name,
+                  val: Math.max(0, balanceByPot[p.id] ?? 0),
+                  color: ["#059669", "#8b5cf6", "#f59e0b", "#ec4899", "#06b6d4", "#10b981", "#6366f1", "#f43f5e"][(i % 8)]
+                }))
+              ].filter(item => item.val > 0).map((item, i) => (
+                <div key={i} className="flex items-center gap-2 min-w-0 group/item transition-all hover:translate-x-1">
+                  <div className="h-2 w-2 rounded-full shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.1)]" style={{ backgroundColor: item.color }} />
+                  <span className="text-[9px] sm:text-[10px] font-black text-slate-500 dark:text-slate-400 truncate uppercase tracking-tighter leading-none">
+                    {item.name}: {((item.val / totalBalance) * 100).toFixed(0)}%
+                  </span>
+                </div>
+              ))}
             </div>
-            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-expense/10 sm:h-12 sm:w-12">
-              <svg className="h-6 w-6 text-expense" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 17h8m0 0V9m0 8l-8-8-4 4-6-6" />
-              </svg>
-            </div>
-          </div>
+          )}
         </section>
       </div>
 
       {/* Celengan */}
-      <section className="rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 p-4 shadow-card sm:p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">Celengan</h2>
+      <section className="rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 sm:p-8 shadow-xl relative overflow-hidden group">
+        <div className="absolute -top-32 -left-32 w-80 h-80 bg-primary/5 rounded-full blur-[100px] pointer-events-none opacity-50 transition-transform group-hover:scale-125" />
+        <div className="flex items-center justify-between mb-6 relative z-10">
+          <div className="flex flex-col">
+            <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white sm:text-2xl uppercase tracking-tighter">Celengan</h2>
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest">Tempat menabung untuk mimpi-mimpimu</p>
+          </div>
           <button
             type="button"
             onClick={() => setAddingPot(true)}
-            className="text-sm font-medium text-primary dark:text-sky-400 hover:underline"
+            className="group flex items-center gap-2 rounded-2xl bg-primary/10 dark:bg-primary/20 px-4 py-2 text-sm font-bold text-primary transition-all hover:bg-primary hover:text-white"
           >
-            + Tambah celengan
+            <span className="text-lg transition-transform group-hover:rotate-90">+</span>
+            Tambah
           </button>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div
-            className={`rounded-xl border p-4 transition cursor-default ${selectedPotId === null ? "border-primary bg-primary/10 dark:bg-primary/20" : "border-border dark:border-slate-600 hover:border-primary/50"}`}
+            className={`group relative overflow-hidden rounded-2xl border-2 p-5 transition-all cursor-pointer ${selectedPotId === null ? "border-primary bg-primary/5 dark:bg-primary/10 shadow-glow dark:shadow-glow-dark" : "border-transparent bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
             onClick={() => setSelectedPotId(null)}
             role="button"
             tabIndex={0}
             onKeyDown={(e) => e.key === "Enter" && setSelectedPotId(null)}
           >
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Umum</p>
-            <p className={`mt-1 text-lg font-bold font-mono tabular-nums ${(balanceByPot["__umum__"] ?? 0) >= 0 ? "text-income" : "text-expense"}`}>
-              {formatCurrency(balanceByPot["__umum__"] ?? 0)}
-            </p>
+            <div className={`absolute right-0 top-0 h-16 w-16 translate-x-4 -translate-y-4 rounded-full bg-primary/10 blur-xl transition-opacity ${selectedPotId === null ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
+            <div className="relative flex flex-col h-full justify-between gap-3">
+              <div>
+                <div className="flex items-center justify-between">
+                  <span className="inline-flex items-center justify-center h-10 w-10 rounded-xl bg-white dark:bg-slate-700 shadow-soft text-primary">
+                    <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                  </span>
+                  {selectedPotId === null && <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />}
+                </div>
+                <h3 className="mt-3 font-bold text-slate-900 dark:text-white">Umum</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Saldo tabungan utama kamu</p>
+              </div>
+              <div className="flex items-baseline gap-1 mt-auto">
+                <span className={`text-xl font-black tabular-nums ${(balanceByPot["__umum__"] ?? 0) >= 0 ? "text-income" : "text-expense"}`}>
+                  {formatCurrency(balanceByPot["__umum__"] ?? 0)}
+                </span>
+              </div>
+            </div>
           </div>
           {pots.map((pot) => {
             const bal = balanceByPot[pot.id] ?? 0;
             const target = pot.target_amount != null ? Number(pot.target_amount) : null;
             const pct = target != null && target > 0 ? Math.min(100, (bal / target) * 100) : null;
+            const isSelected = selectedPotId === pot.id;
+            
             return (
               <div
                 key={pot.id}
-                className={`rounded-xl border p-4 transition cursor-default ${selectedPotId === pot.id ? "border-primary bg-primary/10 dark:bg-primary/20" : "border-border dark:border-slate-600 hover:border-primary/50"}`}
+                className={`group relative overflow-hidden rounded-2xl border-2 p-5 transition-all cursor-pointer ${isSelected ? "border-primary bg-primary/5 dark:bg-primary/10 shadow-glow dark:shadow-glow-dark" : "border-transparent bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800"}`}
                 onClick={() => setSelectedPotId(pot.id)}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => e.key === "Enter" && setSelectedPotId(pot.id)}
               >
-                <div className="flex items-start gap-3">
-                  {pot.photo && (
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-transparent">
-                      <img src={pot.photo} alt="" decoding="async" className="h-full w-full object-contain" />
-                    </span>
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-700 dark:text-slate-200">{pot.name}</p>
-                    {pot.description && (
-                      <p className="mt-0.5 text-xs text-muted dark:text-slate-400 line-clamp-2">{pot.description}</p>
+                <div className={`absolute right-0 top-0 h-20 w-20 translate-x-4 -translate-y-4 rounded-full bg-primary/5 blur-xl transition-opacity ${isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100"}`} />
+                <div className="relative flex flex-col h-full gap-3">
+                  <div className="flex items-start justify-between">
+                    {pot.photo ? (
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white dark:bg-slate-700 shadow-soft border border-white/20">
+                        <img src={pot.photo} alt="" decoding="async" className="h-full w-full object-contain" />
+                      </span>
+                    ) : (
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white dark:bg-slate-700 shadow-soft text-primary">
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      </span>
                     )}
-                    <p className={`mt-1 text-lg font-bold font-mono tabular-nums ${bal >= 0 ? "text-income" : "text-expense"}`}>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingPot(pot);
+                          setEditPotName(pot.name);
+                          setEditPotTarget(pot.target_amount != null ? formatAmountDisplay(String(pot.target_amount)) : "");
+                          setEditPotPhoto(pot.photo ?? null);
+                          setEditPotDescription(pot.description ?? "");
+                        }}
+                        className="rounded-lg p-2 text-slate-400 hover:bg-white dark:hover:bg-slate-700 hover:text-primary transition-all"
+                        title="Edit celengan"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); setPotToDelete(pot); }}
+                        className="rounded-lg p-2 text-slate-400 hover:bg-red-50 dark:hover:bg-slate-700 hover:text-expense transition-all"
+                        title="Hapus celengan"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-slate-900 dark:text-white truncate">{pot.name}</h3>
+                    {pot.description && <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1 italic">{pot.description}</p>}
+                    <p className={`mt-2 text-xl font-black tabular-nums ${bal >= 0 ? "text-income" : "text-expense"}`}>
                       {formatCurrency(bal)}
                     </p>
                   </div>
-                  <div className="flex shrink-0 items-center gap-0.5">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setEditingPot(pot);
-                        setEditPotName(pot.name);
-                        setEditPotTarget(pot.target_amount != null ? formatAmountDisplay(String(pot.target_amount)) : "");
-                        setEditPotPhoto(pot.photo ?? null);
-                        setEditPotDescription(pot.description ?? "");
-                      }}
-                      className="rounded p-1.5 text-muted hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-600 dark:hover:text-primary"
-                      title="Edit celengan"
-                    >
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setPotToDelete(pot); }}
-                      className="rounded p-1.5 text-muted hover:bg-red-50 hover:text-expense dark:hover:bg-slate-600 dark:hover:text-expense"
-                      title="Hapus celengan"
-                    >
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                    </button>
-                  </div>
-                </div>
-                {target != null && target > 0 && (
-                  <div className="mt-2">
-                    <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-600 overflow-hidden">
-                      <div className="h-full rounded-full bg-primary dark:bg-sky-500 transition-all" style={{ width: `${pct}%` }} />
+                  {target != null && target > 0 && (
+                    <div className="mt-auto pt-2">
+                       <div className="flex justify-between items-center mb-1.5 px-0.5">
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Progres: {pct?.toFixed(0)}%</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Target: {formatCurrency(target)}</span>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shadow-inner">
+                        <div 
+                          className={`h-full rounded-full transition-all duration-1000 ease-out ${pct && pct >= 100 ? "bg-income" : "bg-primary"}`} 
+                          style={{ width: `${pct}%` }} 
+                        />
+                      </div>
                     </div>
-                    <p className="mt-1 text-xs text-muted dark:text-slate-400">{pct?.toFixed(0)}% dari {formatCurrency(target)}</p>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             );
           })}
@@ -580,9 +759,9 @@ export function TabunganContent({ userId }: TabunganContentProps) {
 
         {/* Modal Tambah / Edit celengan */}
         {(addingPot || editingPot) && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
             <div
-              className="absolute inset-0 bg-slate-900/50 dark:bg-black/60"
+              className="absolute inset-0 bg-slate-900/40 dark:bg-black/80 backdrop-blur-xl animate-in fade-in duration-300"
               onClick={() => {
                 if (addingPot) {
                   setAddingPot(false);
@@ -595,104 +774,23 @@ export function TabunganContent({ userId }: TabunganContentProps) {
               aria-hidden
             />
             <div
-              className="relative w-full max-w-md rounded-2xl border border-border dark:border-slate-600 bg-card dark:bg-slate-800 p-6 shadow-card"
+              className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2.5rem] shadow-[0_32px_64px_-12px_rgba(0,0,0,0.3)] p-8 overflow-hidden animate-in zoom-in-95 fade-in duration-200"
               onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true"
-              aria-labelledby="celengan-modal-title"
             >
-              <div className="mb-5 flex items-center justify-between">
-                <h3 id="celengan-modal-title" className="text-lg font-semibold text-slate-800 dark:text-slate-100">
-                  {addingPot ? "Tambah celengan" : "Edit celengan"}
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (addingPot) {
-                      setAddingPot(false);
-                      setNewPotName("");
-                      setNewPotTarget("");
-                      setNewPotPhoto(null);
-                      setNewPotDescription("");
-                    } else setEditingPot(null);
-                  }}
-                  className="rounded-lg p-2 text-muted hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-700 dark:hover:text-slate-200"
-                  aria-label="Tutup"
-                >
-                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
-                </button>
-              </div>
+              {/* Decorative Blobs */}
+              <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-[80px] pointer-events-none" />
+              <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-500/5 rounded-full blur-[80px] pointer-events-none" />
 
-              <div className="space-y-4">
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Nama celengan</label>
-                  <input
-                    type="text"
-                    value={addingPot ? newPotName : editPotName}
-                    onChange={(e) => addingPot ? setNewPotName(e.target.value) : setEditPotName(e.target.value)}
-                    placeholder="Mis. Dana darurat"
-                    className="w-full min-h-[48px] rounded-xl border border-border dark:border-slate-600 bg-card dark:bg-slate-700 px-4 py-3 text-slate-800 dark:text-slate-100 placeholder:text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Target (Rp)</label>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={addingPot ? newPotTarget : editPotTarget}
-                    onChange={(e) => {
-                      const v = formatAmountDisplay(e.target.value);
-                      addingPot ? setNewPotTarget(v) : setEditPotTarget(v);
-                    }}
-                    placeholder="Mis. 10.000.000"
-                    className="w-full min-h-[48px] rounded-xl border border-border dark:border-slate-600 bg-card dark:bg-slate-700 px-4 py-3 text-slate-800 dark:text-slate-100 placeholder:text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                  />
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Foto (opsional)</label>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const f = e.target.files?.[0];
-                        if (!f) return;
-                        fileToBase64(f)
-                          .then((data) => addingPot ? setNewPotPhoto(data) : setEditPotPhoto(data))
-                          .catch((err) => showToast(err instanceof Error ? err.message : "Gagal memuat gambar", "error"));
-                        e.target.value = "";
-                      }}
-                      className="block w-full max-w-[200px] text-sm text-slate-600 dark:text-slate-400 file:mr-2 file:rounded-xl file:border-0 file:bg-primary file:px-4 file:py-2.5 file:text-sm file:font-medium file:text-white file:hover:bg-primary-hover"
-                    />
-                    {(addingPot ? newPotPhoto : editPotPhoto) && (
-                      <div className="relative">
-                        <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-border bg-transparent">
-                        <img src={addingPot ? newPotPhoto! : editPotPhoto!} alt="" decoding="async" className="h-full w-full object-contain" />
-                      </span>
-                        <button
-                          type="button"
-                          onClick={() => addingPot ? setNewPotPhoto(null) : setEditPotPhoto(null)}
-                          className="absolute -right-1 -top-1 flex h-6 w-6 items-center justify-center rounded-full bg-slate-700 text-white text-sm hover:bg-slate-800"
-                          aria-label="Hapus foto"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    )}
+              <div className="relative z-10 space-y-8">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-1">
+                    <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">
+                      {addingPot ? "Tambah Celengan" : "Edit Celengan"}
+                    </h3>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Atur target keuangan barumu</p>
                   </div>
-                </div>
-                <div>
-                  <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Deskripsi (opsional)</label>
-                  <textarea
-                    value={addingPot ? newPotDescription : editPotDescription}
-                    onChange={(e) => addingPot ? setNewPotDescription(e.target.value) : setEditPotDescription(e.target.value)}
-                    placeholder="Mis. Untuk dana darurat 6 bulan"
-                    rows={2}
-                    className="w-full min-h-[80px] rounded-xl border border-border dark:border-slate-600 bg-card dark:bg-slate-700 px-4 py-3 text-slate-800 dark:text-slate-100 placeholder:text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none"
-                  />
-                </div>
-
-                <div className="flex gap-3 pt-2">
                   <button
                     type="button"
                     onClick={() => {
@@ -704,64 +802,164 @@ export function TabunganContent({ userId }: TabunganContentProps) {
                         setNewPotDescription("");
                       } else setEditingPot(null);
                     }}
-                    className="flex-1 min-h-[48px] rounded-xl border border-border dark:border-slate-600 py-3 font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition"
+                    className="p-3 rounded-2xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                   >
-                    Batal
+                    <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
                   </button>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const name = addingPot ? newPotName.trim() : editPotName.trim();
-                      const targetStr = addingPot ? newPotTarget : editPotTarget;
-                      const targetNum = parseAmountInput(targetStr);
-                      if (!name) {
-                        showToast("Isi nama celengan", "error");
-                        return;
-                      }
-                      if (!targetNum || targetNum <= 0) {
-                        showToast("Isi target (Rp) dengan nominal lebih dari 0", "error");
-                        return;
-                      }
-                      if (addingPot) {
-                        const { error: err } = await supabase.from("savings_pots").insert({
-                          user_id: userId,
-                          name,
-                          target_amount: targetNum,
-                          sort_order: pots.length,
-                          photo: newPotPhoto || null,
-                          description: newPotDescription.trim() || null,
-                        });
-                        if (!err) {
+                </div>
+
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 ml-1">Nama Celengan</label>
+                    <input
+                      type="text"
+                      value={addingPot ? newPotName : editPotName}
+                      onChange={(e) => addingPot ? setNewPotName(e.target.value) : setEditPotName(e.target.value)}
+                      placeholder="Mis. Dana Darurat"
+                      className="w-full h-14 rounded-2xl border-2 border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 px-5 text-slate-900 dark:text-white font-bold placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 ml-1">Target Menabung (Rp)</label>
+                    <div className="relative">
+                      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-lg font-black text-slate-400">Rp</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={addingPot ? newPotTarget : editPotTarget}
+                        onChange={(e) => {
+                          const v = formatAmountDisplay(e.target.value);
+                          addingPot ? setNewPotTarget(v) : setEditPotTarget(v);
+                        }}
+                        placeholder="0"
+                        className="w-full h-16 pl-14 pr-5 rounded-2xl border-2 border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 text-2xl font-black tabular-nums text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                       <label className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 ml-1">Foto Celengan</label>
+                       <div className="flex items-center gap-4">
+                        <label className="relative group cursor-pointer">
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0];
+                              if (!f) return;
+                              fileToBase64(f)
+                                .then((data) => addingPot ? setNewPotPhoto(data) : setEditPotPhoto(data))
+                                .catch((err) => showToast(err instanceof Error ? err.message : "Gagal memuat gambar", "error"));
+                              e.target.value = "";
+                            }}
+                            className="sr-only"
+                          />
+                          <div className="h-16 w-16 rounded-2xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary transition-all group-hover:bg-primary/5">
+                            {(addingPot ? newPotPhoto : editPotPhoto) ? (
+                               <img src={addingPot ? newPotPhoto! : editPotPhoto!} alt="" className="h-full w-full object-cover rounded-[14px]" />
+                            ) : (
+                               <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                            )}
+                          </div>
+                          {(addingPot ? newPotPhoto : editPotPhoto) && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.preventDefault(); addingPot ? setNewPotPhoto(null) : setEditPotPhoto(null); }}
+                              className="absolute -right-2 -top-2 h-6 w-6 rounded-full bg-red-500 text-white flex items-center justify-center shadow-lg hover:bg-red-600 transition-transform hover:scale-110"
+                            >
+                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                          )}
+                        </label>
+                        <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 leading-tight">Klik ikon untuk<br />upload foto</p>
+                       </div>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 ml-1">Deskripsi</label>
+                      <textarea
+                        value={addingPot ? newPotDescription : editPotDescription}
+                        onChange={(e) => addingPot ? setNewPotDescription(e.target.value) : setEditPotDescription(e.target.value)}
+                        placeholder="Catatan..."
+                        rows={1}
+                        className="w-full h-16 rounded-2xl border-2 border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 px-5 pt-4 text-slate-900 dark:text-white font-bold placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all outline-none resize-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-4 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (addingPot) {
+                          setAddingPot(false);
                           setNewPotName("");
                           setNewPotTarget("");
                           setNewPotPhoto(null);
                           setNewPotDescription("");
-                          setAddingPot(false);
-                          showToast("Celengan ditambah");
-                          fetchPots();
-                        } else showToast(err.message, "error");
-                      } else if (editingPot) {
-                        const { error: err } = await supabase
-                          .from("savings_pots")
-                          .update({
+                        } else setEditingPot(null);
+                      }}
+                      className="flex-1 py-5 rounded-2xl bg-slate-100 dark:bg-slate-800 border-2 border-transparent text-slate-500 dark:text-slate-400 text-xs font-black tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all uppercase"
+                    >
+                      Batal
+                    </button>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const name = addingPot ? newPotName.trim() : editPotName.trim();
+                        const targetStr = addingPot ? newPotTarget : editPotTarget;
+                        const targetNum = parseAmountInput(targetStr);
+                        if (!name) {
+                          showToast("Isi nama celengan", "error");
+                          return;
+                        }
+                        if (!targetNum || targetNum <= 0) {
+                          showToast("Isi target (Rp) dengan nominal lebih dari 0", "error");
+                          return;
+                        }
+                        if (addingPot) {
+                          const { error: err } = await supabase.from("savings_pots").insert({
+                            user_id: userId,
                             name,
                             target_amount: targetNum,
-                            photo: editPotPhoto || null,
-                            description: editPotDescription.trim() || null,
-                          })
-                          .eq("id", editingPot.id)
-                          .eq("user_id", userId);
-                        if (!err) {
-                          setEditingPot(null);
-                          showToast("Celengan diperbarui");
-                          fetchPots();
-                        } else showToast(err.message, "error");
-                      }
-                    }}
-                    className="flex-1 min-h-[48px] rounded-xl bg-primary py-3 font-semibold text-white shadow-lg shadow-primary/25 hover:bg-primary-hover hover:shadow-primary/30 transition active:scale-[0.98]"
-                  >
-                    Simpan
-                  </button>
+                            sort_order: pots.length,
+                            photo: newPotPhoto || null,
+                            description: newPotDescription.trim() || null,
+                          });
+                          if (!err) {
+                            setNewPotName("");
+                            setNewPotTarget("");
+                            setNewPotPhoto(null);
+                            setNewPotDescription("");
+                            setAddingPot(false);
+                            showToast("Celengan ditambah");
+                            fetchPots();
+                          } else showToast(err.message, "error");
+                        } else if (editingPot) {
+                          const { error: err } = await supabase
+                            .from("savings_pots")
+                            .update({
+                              name,
+                              target_amount: targetNum,
+                              photo: editPotPhoto || null,
+                              description: editPotDescription.trim() || null,
+                            })
+                            .eq("id", editingPot.id)
+                            .eq("user_id", userId);
+                          if (!err) {
+                            setEditingPot(null);
+                            showToast("Celengan diperbarui");
+                            fetchPots();
+                          } else showToast(err.message, "error");
+                        }
+                      }}
+                      className="flex-1 py-5 rounded-2xl bg-primary text-white font-black tracking-[0.2em] shadow-2xl shadow-primary/30 hover:scale-[1.02] active:scale-95 transition-all text-xs uppercase"
+                    >
+                      Simpan
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -769,218 +967,310 @@ export function TabunganContent({ userId }: TabunganContentProps) {
         )}
       </section>
 
-      {/* Setor/Tarik (kiri) | Pindahkan uang (kanan) — desktop: dua card samping-samping */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-      <section className="rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 p-4 shadow-card sm:p-6">
-        <h2 className="mb-4 text-base font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">Setor / Tarik</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {(pots.length > 0) && (
+      {/* Aksi Cepat / Tabbed Actions */}
+      <section className="overflow-hidden rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl relative">
+        <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-[80px] pointer-events-none" />
+        <div className="flex border-b border-border/50 dark:border-slate-700 overflow-x-auto scrollbar-none">
+          <button
+            type="button"
+            onClick={() => setActiveTab("setor")}
+            className={`flex flex-1 items-center justify-center gap-2 px-6 py-4 text-sm font-bold transition-all whitespace-nowrap ${activeTab === "setor" ? "bg-primary/5 text-primary border-b-2 border-primary" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"}`}
+          >
+            Setor & Tarik
+          </button>
+          {pots.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setActiveTab("pindah")}
+              className={`flex flex-1 items-center justify-center gap-2 px-6 py-4 text-sm font-bold transition-all whitespace-nowrap ${activeTab === "pindah" ? "bg-primary/5 text-primary border-b-2 border-primary" : "text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"}`}
+            >
+              Pindah Saldo
+            </button>
+          )}
+        </div>
+
+        <div className="p-6">
+          {activeTab === "setor" ? (
             <div>
-              <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Celengan</label>
-              <select
-                value={selectedPotId ?? "__umum__"}
-                onChange={(e) => setSelectedPotId(e.target.value === "__umum__" ? null : e.target.value)}
-                className="w-full min-h-[48px] rounded-xl border border-border dark:border-slate-600 bg-card dark:bg-slate-700 px-4 py-3 text-slate-800 dark:text-slate-100 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              >
-                <option value="__umum__">Umum</option>
-                {pots.map((p) => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </select>
+              <div className="space-y-6">
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter">Setor atau Tarik</h3>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Pilih celengan dan masukkan nominal yang diinginkan.</p>
+                </div>
+
+                <form onSubmit={handleSubmit} className="space-y-5">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1">Pilih Celengan</label>
+                      <SelectDropdown
+                        value={selectedPotId ?? "__umum__"}
+                        onChange={(val) => setSelectedPotId(val === "__umum__" ? null : val)}
+                        options={[
+                          { value: "__umum__", label: "UMUM" },
+                          ...pots.map(p => ({ value: p.id, label: p.name.toUpperCase() }))
+                        ]}
+                        placeholder="Pilih Celengan"
+                        className="w-full h-14"
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Tipe Transaksi</label>
+                      <div className="flex h-14 rounded-2xl bg-slate-100 dark:bg-slate-700 p-1.5">
+                        <button
+                          type="button"
+                          onClick={() => { setType("deposit"); setError(""); }}
+                          className={`flex-1 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${type === "deposit" ? "bg-white dark:bg-slate-600 text-income shadow-sm ring-1 ring-black/10 dark:ring-white/20" : "text-slate-500 dark:text-slate-400"}`}
+                        >
+                          Setor
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setType("withdraw"); setError(""); }}
+                          className={`flex-1 rounded-xl text-xs font-black uppercase tracking-widest transition-all ${type === "withdraw" ? "bg-white dark:bg-slate-600 text-expense shadow-sm ring-1 ring-black/10 dark:ring-white/20" : "text-slate-500 dark:text-slate-400"}`}
+                        >
+                          Tarik
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="relative group">
+                    <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Nominal (Rp)</label>
+                    <div className="relative">
+                       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-slate-400">Rp</span>
+                       <input
+                        type="text"
+                        inputMode="numeric"
+                        value={amount}
+                        onChange={handleAmountChange}
+                        placeholder="0"
+                        className="w-full h-16 pl-14 pr-4 rounded-2xl border border-border dark:border-slate-600 bg-white dark:bg-slate-800 text-2xl font-black tabular-nums text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Catatan (Opsional)</label>
+                    <input
+                      type="text"
+                      value={note}
+                      onChange={(e) => setNote(e.target.value)}
+                      placeholder="Mis: Tabungan gajian"
+                      className="w-full h-14 px-4 rounded-2xl border border-border dark:border-slate-600 bg-slate-50 dark:bg-slate-700 text-sm font-medium text-slate-900 dark:text-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl bg-expense/10 text-expense text-xs font-bold animate-pulse">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      {error}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={submitLoading}
+                    className={`relative w-full h-16 rounded-2xl font-black text-white shadow-lg overflow-hidden transition-all active:scale-[0.98] disabled:opacity-50 ${type === "deposit" ? "bg-income shadow-income/25 hover:brightness-110" : "bg-expense shadow-expense/25 hover:brightness-110"}`}
+                  >
+                    <span className="relative z-10">{submitLoading ? "Sedang Proses..." : (type === "deposit" ? "KONFIRMASI SETOR" : "KONFIRMASI TARIK")}</span>
+                    <div className="absolute inset-0 bg-white/20 translate-y-full transition-transform hover:translate-y-0" />
+                  </button>
+                </form>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-2">
+                  <h3 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter">Pindahkan Saldo</h3>
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400">Atur distribusi uangmu langsung antar celengan.</p>
+                </div>
+
+                <form onSubmit={handleTransfer} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-end">
+                    <div className="md:col-span-5">
+                      <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1">Dari</label>
+                      <SelectDropdown
+                        value={transferFrom}
+                        onChange={(v) => {
+                          setTransferFrom(v);
+                          if (transferTo === v) setTransferTo(v === "__umum__" ? (pots[0]?.id ?? "") : "__umum__");
+                        }}
+                        options={[
+                          { value: "__umum__", label: "UMUM" },
+                          ...pots.map(p => ({ value: p.id, label: p.name.toUpperCase() }))
+                        ]}
+                        placeholder="Dari"
+                        className="w-full h-14"
+                      />
+                    </div>
+
+                    <div className="md:col-span-2 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (!transferTo || transferFrom === transferTo) return;
+                          setTransferFrom(transferTo);
+                          setTransferTo(transferFrom);
+                          setTransferError("");
+                        }}
+                        className="h-14 w-14 rounded-2xl bg-primary text-white shadow-lg shadow-primary/20 flex items-center justify-center transition-all hover:rotate-180 active:scale-90"
+                      >
+                        <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                      </button>
+                    </div>
+
+                    <div className="md:col-span-5">
+                      <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 ml-1">Ke</label>
+                      <SelectDropdown
+                        value={transferTo}
+                        onChange={setTransferTo}
+                        options={[
+                          { value: "", label: "— PILIH TUJUAN —" },
+                          ...(transferFrom !== "__umum__" ? [{ value: "__umum__", label: "UMUM" }] : []),
+                          ...pots.filter(p => p.id !== transferFrom).map(p => ({ value: p.id, label: p.name.toUpperCase() }))
+                        ]}
+                        placeholder="Ke"
+                        className="w-full h-14"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="relative">
+                    <label className="mb-2 block text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400">Nominal Transfer (Rp)</label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xl font-bold text-slate-400">Rp</span>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={transferAmount}
+                        onChange={(e) => setTransferAmount(formatAmountDisplay(e.target.value))}
+                        placeholder="0"
+                        className="w-full h-16 pl-14 pr-4 rounded-2xl border border-border dark:border-slate-600 bg-white dark:bg-slate-800 text-2xl font-black tabular-nums text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all"
+                      />
+                    </div>
+                  </div>
+
+                  {transferError && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl bg-expense/10 text-expense text-xs font-bold uppercase">
+                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                      {transferError}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={transferLoading}
+                    className="w-full h-16 rounded-2xl bg-primary shadow-lg shadow-primary/25 font-black text-white text-lg tracking-widest hover:bg-primary-hover transition-all active:scale-[0.98] disabled:opacity-50"
+                  >
+                    {transferLoading ? "PROSES TRANSFER..." : "PINDAHKAN SALDO"}
+                  </button>
+                </form>
+              </div>
             </div>
           )}
-          <div className="flex rounded-xl bg-slate-100 dark:bg-slate-700 p-1">
-            <button
-              type="button"
-              onClick={() => { setType("deposit"); setError(""); }}
-              className={`flex-1 min-h-[48px] rounded-lg py-3 sm:py-2 text-sm font-medium transition ${type === "deposit" ? "bg-card dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow dark:text-primary" : "text-muted dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"}`}
-            >
-              Setor
-            </button>
-            <button
-              type="button"
-              onClick={() => { setType("withdraw"); setError(""); }}
-              className={`flex-1 min-h-[48px] rounded-lg py-3 sm:py-2 text-sm font-medium transition ${type === "withdraw" ? "bg-card dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow dark:text-primary" : "text-muted dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"}`}
-            >
-              Tarik
-            </button>
-          </div>
-          <div>
-            <label htmlFor="tabungan-amount" className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Jumlah (Rp)
-            </label>
-            <input
-              id="tabungan-amount"
-              type="text"
-              inputMode="numeric"
-              value={amount}
-              onChange={handleAmountChange}
-              placeholder="0"
-              className="w-full min-h-[48px] rounded-xl border border-border dark:border-slate-600 bg-card dark:bg-slate-700 px-4 py-3 text-slate-800 dark:text-slate-100 placeholder:text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-          <div>
-            <label htmlFor="tabungan-note" className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
-              Catatan (opsional)
-            </label>
-            <input
-              id="tabungan-note"
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Mis. dari gaji bulanan"
-              className="w-full min-h-[48px] rounded-xl border border-border dark:border-slate-600 bg-card dark:bg-slate-700 px-4 py-3 text-slate-800 dark:text-slate-100 placeholder:text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-            />
-          </div>
-          {error && <p className="text-sm text-expense">{error}</p>}
-          <button
-            type="submit"
-            disabled={submitLoading}
-            className="w-full min-h-[48px] rounded-xl bg-primary py-3.5 font-semibold text-white shadow-lg shadow-primary/25 transition hover:bg-primary-hover hover:shadow-primary/30 disabled:opacity-50 active:scale-[0.98]"
-          >
-            {submitLoading ? "Menyimpan..." : type === "deposit" ? "Setor" : "Tarik"}
-          </button>
-        </form>
+        </div>
       </section>
 
-      {/* Card kanan: Pindahkan uang — hanya tampil kalau ada minimal 1 celengan selain Umum */}
-      {pots.length > 0 ? (
-        <section className="rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 p-4 shadow-card sm:p-6">
-          <h2 className="mb-2 text-base font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">Pindahkan uang</h2>
-          <p className="mb-4 text-sm text-muted dark:text-slate-400">
-            Pindah dari satu celengan ke celengan lain tanpa tarik dulu. Contoh: dari Umum ke Dana darurat.
-          </p>
-          <form onSubmit={handleTransfer} className="space-y-4">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-2">
-              <div className="min-w-0 flex-1">
-                <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Dari</label>
-                <select
-                  value={transferFrom}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setTransferFrom(v);
-                    if (transferTo === v) setTransferTo(v === "__umum__" ? (pots[0]?.id ?? "") : "__umum__");
-                  }}
-                  className="w-full min-h-[48px] rounded-xl border border-border dark:border-slate-600 bg-card dark:bg-slate-700 px-4 py-3 text-slate-800 dark:text-slate-100 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                >
-                  <option value="__umum__">Umum</option>
-                  {pots.map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!transferTo || transferFrom === transferTo) return;
-                  setTransferFrom(transferTo);
-                  setTransferTo(transferFrom);
-                  setTransferError("");
-                }}
-                className="flex h-12 w-12 shrink-0 items-center justify-center self-center rounded-xl border border-border dark:border-slate-600 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 hover:text-primary dark:hover:bg-slate-600 dark:hover:text-primary transition active:scale-95 sm:self-end sm:mb-0.5"
-                title="Tukar Dari ↔ Ke"
-                aria-label="Tukar Dari dan Ke"
-              >
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
-                </svg>
-              </button>
-              <div className="min-w-0 flex-1">
-                <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Ke</label>
-                <select
-                  value={transferTo}
-                  onChange={(e) => setTransferTo(e.target.value)}
-                  className="w-full min-h-[48px] rounded-xl border border-border dark:border-slate-600 bg-card dark:bg-slate-700 px-4 py-3 text-slate-800 dark:text-slate-100 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                >
-                  <option value="">— Pilih —</option>
-                  {transferFrom !== "__umum__" && <option value="__umum__">Umum</option>}
-                  {pots.filter((p) => p.id !== transferFrom).map((p) => (
-                    <option key={p.id} value={p.id}>{p.name}</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-            <div>
-              <label htmlFor="transfer-amount" className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Jumlah (Rp)</label>
-              <input
-                id="transfer-amount"
-                type="text"
-                inputMode="numeric"
-                value={transferAmount}
-                onChange={(e) => setTransferAmount(formatAmountDisplay(e.target.value))}
-                placeholder="0"
-                className="w-full min-h-[48px] rounded-xl border border-border dark:border-slate-600 bg-card dark:bg-slate-700 px-4 py-3 text-slate-800 dark:text-slate-100 placeholder:text-muted focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-            {transferError && <p className="text-sm text-expense">{transferError}</p>}
-            <button
-              type="submit"
-              disabled={transferLoading}
-              className="w-full min-h-[48px] rounded-xl bg-primary py-3.5 font-semibold text-white shadow-lg shadow-primary/25 transition hover:bg-primary-hover hover:shadow-primary/30 disabled:opacity-50 active:scale-[0.98]"
-            >
-              {transferLoading ? "Memindahkan..." : "Pindahkan"}
-            </button>
-          </form>
-        </section>
-      ) : null}
-      </div>
-
-      {/* Pengingat setor — full width seperti semula */}
+      {/* Pengingat setor */}
       {reminder && (
-        <section className="rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 p-4 shadow-card sm:p-6">
-          <h2 className="mb-1 text-base font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">Pengingat setor</h2>
-          <p className="mb-4 text-sm text-muted dark:text-slate-400">
-            Kalau akun Telegram sudah di-link, kamu akan dapat pesan pengingat di Telegram setiap hari yang kamu pilih. Isi pesan: saldo tabungan + ajakan setor (lewat bot atau dashboard).
-          </p>
-          <div className="flex flex-wrap items-center gap-4">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={reminder.enabled}
-                onChange={async (e) => {
-                  const enabled = e.target.checked;
-                  setReminder((r) => r ? { ...r, enabled } : { user_id: userId, enabled, day_of_week: 1 });
-                  const { error: err } = await supabase.from("savings_reminders").upsert({ user_id: userId, enabled, day_of_week: reminder?.day_of_week ?? 1, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
-                  if (!err) showToast(enabled ? "Pengingat diaktifkan" : "Pengingat dimatikan");
-                }}
-                className="rounded border-border text-primary focus:ring-primary"
-              />
-              <span className="text-sm text-slate-700 dark:text-slate-200">Kirim pengingat ke Telegram</span>
-            </label>
-            {reminder.enabled && (
-              <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-                <span>Setiap</span>
-                <select
-                  value={reminder.day_of_week}
-                  onChange={async (e) => {
-                    const day = Number(e.target.value);
-                    setReminder((r) => r ? { ...r, day_of_week: day } : null);
-                    await supabase.from("savings_reminders").upsert({ user_id: userId, enabled: true, day_of_week: day, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
-                  }}
-                  aria-label="Hari pengingat"
-                  className="rounded-lg border border-border dark:border-slate-600 bg-white dark:bg-slate-700 px-3 py-2"
-                >
-                  {DAY_NAMES.map((name, i) => (
-                    <option key={i} value={i}>{name}</option>
-                  ))}
-                </select>
-              </label>
-            )}
+        <section className="group relative overflow-hidden rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 shadow-xl transition-all hover:shadow-2xl">
+          <div className="absolute right-0 top-0 h-48 w-48 translate-x-12 -translate-y-12 rounded-full bg-primary/10 blur-[80px] pointer-events-none group-hover:scale-110 transition-transform" />
+          <div className="absolute left-0 bottom-0 h-32 w-32 -translate-x-8 translate-y-8 rounded-full bg-emerald-500/5 blur-[60px] pointer-events-none group-hover:scale-110 transition-transform" />
+          <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="space-y-2 max-w-2xl">
+              <div className="flex items-center gap-2">
+                <svg className="h-6 w-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
+                <h2 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter">Pengingat Setor</h2>
+              </div>
+              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed">
+                Aktifkan pengingat otomatis ke Telegram agar tabunganmu terus tumbuh. Kami akan mengirimkan ringkasan saldo dan ajakan setor pada hari yang kamu tentukan.
+              </p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              {!isTelegramLinked ? (
+                <div className="flex flex-col sm:flex-row items-center gap-3">
+                   <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-orange-100/50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 text-orange-600 dark:text-orange-400 text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
+                      <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                      Belum Terhubung
+                   </div>
+                   <a 
+                    href="/link-telegram" 
+                    className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-[#24A1DE] text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-sky-500/20 hover:scale-[1.05] active:scale-95 transition-all text-center"
+                   >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zM17.8 8.16l-1.9 8.93c-.14.64-.52.8-.2.25l-2.9-2.14-1.4 1.35c-.15.15-.28.28-.57.28l.2-2.94 5.36-4.84c.23-.2-.05-.31-.35-.11l-6.63 4.17-2.85-.89c-.62-.2-.63-.62.13-.91l11.12-4.29c.51-.19.96.11.7.9l.2.49z" /></svg>
+                    LINK TELEGRAM
+                   </a>
+                </div>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-center gap-4 p-2 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-border/20">
+                  <label className="relative inline-flex items-center cursor-pointer group/toggle px-3 py-2 rounded-xl hover:bg-white dark:hover:bg-slate-800 transition-all">
+                    <input
+                      type="checkbox"
+                      checked={reminder.enabled}
+                      onChange={async (e) => {
+                        const enabled = e.target.checked;
+                        setReminder((r) => r ? { ...r, enabled } : { user_id: userId, enabled, day_of_week: 1 });
+                        const { error: err } = await supabase.from("savings_reminders").upsert({ user_id: userId, enabled, day_of_week: reminder?.day_of_week ?? 1, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+                        if (!err) showToast(enabled ? "Pengingat diaktifkan" : "Pengingat dimatikan");
+                      }}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:peer-focus:ring-primary/10 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[10px] after:left-[14px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary" />
+                    <span className="ml-3 text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300">Aktif</span>
+                  </label>
+
+                  {reminder.enabled && (
+                    <div className="flex items-center gap-2 border-l border-border/30 dark:border-slate-700 pl-4 py-1">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Setiap</span>
+                      <SelectDropdown
+                        value={String(reminder.day_of_week)}
+                        onChange={(v) => {
+                          const day = Number(v);
+                          setReminder((r) => r ? { ...r, day_of_week: day } : null);
+                          supabase.from("savings_reminders").upsert({ user_id: userId, enabled: true, day_of_week: day, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+                        }}
+                        options={DAY_NAMES.map((name, i) => ({ value: String(i), label: name.toUpperCase() }))}
+                        placeholder="Hari"
+                        className="h-10 min-w-[120px]"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         </section>
       )}
 
-      {/* Riwayat — format table sama seperti daftar transaksi; entri pindah uang tidak ditampilkan */}
-      <section className="rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 p-4 shadow-card sm:p-6">
-        <h2 className="mb-4 text-base font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">Riwayat</h2>
+      {/* Riwayat */}
+      <section className="rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 sm:p-10 shadow-2xl relative group">
+        <div className="absolute inset-0 overflow-hidden rounded-[2.5rem] pointer-events-none">
+          <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/5 rounded-full blur-[120px] group-hover:scale-110 transition-transform" />
+        </div>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 relative z-10">
+          <div>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Riwayat Aktivitas</h2>
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest">Pantau mutasi saldo tabunganmu</p>
+          </div>
+          {entriesForRiwayat.length > 0 && (
+            <div className="px-4 py-2 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-border/20 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+              Total {entriesForRiwayat.length} Rekaman
+            </div>
+          )}
+        </div>
+
         {entriesForRiwayat.length === 0 ? (
-          <EmptyState
-            icon="savings"
-            title="Belum ada setor/tarik"
-            description="Mulai dari form di atas untuk menabung. Saldo akan tercatat di sini. (Pindah uang antar celengan tidak muncul di sini.)"
-          />
+          <div className="py-12">
+            <EmptyState
+              icon="savings"
+              title="Belum Ada Aktivitas"
+              description="Mulailah menabung hari ini. Setoran pertama kamu akan muncul di sini."
+            />
+          </div>
         ) : (
-          <>
+          <div className="space-y-6">
             {(() => {
               const safeRiwayatPage = Math.min(riwayatPage, totalRiwayatPages);
               const paginatedEntries = entriesForRiwayat.slice(
@@ -989,186 +1279,186 @@ export function TabunganContent({ userId }: TabunganContentProps) {
               );
               return (
                 <>
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <span className="text-sm text-muted dark:text-slate-400">
-                Menampilkan{" "}
-                <span className="font-medium text-slate-700 dark:text-slate-300">
-                  {(safeRiwayatPage - 1) * RIWAYAT_PAGE_SIZE + 1}–{(safeRiwayatPage - 1) * RIWAYAT_PAGE_SIZE + paginatedEntries.length}
-                </span>{" "}
-                dari <span className="font-medium text-slate-700 dark:text-slate-300">{entriesForRiwayat.length}</span> riwayat
-              </span>
-            </div>
-            <div className="-mx-1 overflow-x-auto overflow-touch rounded-2xl border border-border dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800 shadow-card scrollbar-thin sm:mx-0" style={{ WebkitOverflowScrolling: "touch" }}>
-              <table className="w-full min-w-[480px] text-sm">
-                <thead>
-                  <tr className="border-b border-border dark:border-slate-600 bg-slate-50/80 dark:bg-slate-700/50 text-left text-muted dark:text-slate-400">
-                    <th className="px-3 py-3 font-medium sm:px-4 sm:py-3.5">Tanggal</th>
-                    <th className="px-3 py-3 font-medium sm:px-4 sm:py-3.5">Tipe</th>
-                    <th className="px-3 py-3 font-medium sm:px-4 sm:py-3.5">Jumlah</th>
-                    <th className="px-3 py-3 font-medium sm:px-4 sm:py-3.5">Catatan</th>
-                    <th className="w-20 px-3 py-3 text-right font-medium sm:w-24 sm:px-4 sm:py-3.5">Aksi</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedEntries.map((entry) => (
-                    <tr key={entry.id} className="border-b border-border dark:border-slate-600 last:border-0 transition hover:bg-slate-50/50 dark:hover:bg-slate-700/50">
-                      <td className="whitespace-nowrap px-3 py-3 text-slate-700 dark:text-slate-300 sm:px-4 sm:py-3.5">{formatDate(entry.created_at)}</td>
-                      <td className="px-3 py-3 sm:px-4 sm:py-3.5">
-                        <span className={`font-medium ${entry.type === "deposit" ? "text-income" : "text-expense"}`}>
-                          {entry.type === "deposit" ? "Setor" : "Tarik"}
-                        </span>
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-3 font-medium tabular-nums sm:px-4 sm:py-3.5">
-                        <span className={entry.type === "deposit" ? "text-income" : "text-expense"}>
-                          {entry.type === "deposit" ? "+" : "-"}
-                          {formatCurrency(Number(entry.amount))}
-                        </span>
-                      </td>
-                      <td className="max-w-[120px] truncate px-3 py-3 text-slate-600 dark:text-slate-400 sm:max-w-[200px] sm:px-4 sm:py-3.5">{entry.note || "—"}</td>
-                      <td className="px-2 py-3 text-right sm:px-4 sm:py-3.5">
-                        <div className="flex items-center justify-end gap-0.5 sm:gap-1">
-                          <button
-                            type="button"
-                            onClick={() => setEditingEntry(entry)}
-                            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-muted hover:bg-slate-100 hover:text-primary dark:hover:bg-slate-600 dark:text-slate-400 dark:hover:text-primary transition active:scale-95"
-                            title="Edit"
-                            aria-label="Edit"
-                          >
-                            <svg className="h-5 w-5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                            </svg>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeletingEntry(entry)}
-                            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-muted hover:bg-red-50 hover:text-expense dark:hover:bg-slate-600 dark:text-slate-400 dark:hover:text-expense transition active:scale-95"
-                            title="Hapus"
-                            aria-label="Hapus"
-                          >
-                            <svg className="h-5 w-5 sm:h-4 sm:w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                            </svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            {entriesForRiwayat.length > 0 && totalRiwayatPages > 1 && (
-              <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border dark:border-slate-600 pt-4">
-                <p className="text-sm text-muted dark:text-slate-400">
-                  Halaman {safeRiwayatPage} dari {totalRiwayatPages}
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setRiwayatPage((p) => Math.max(1, p - 1))}
-                    disabled={safeRiwayatPage <= 1}
-                    className="min-h-[44px] rounded-xl border border-border dark:border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none transition"
-                  >
-                    Sebelumnya
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setRiwayatPage((p) => Math.min(totalRiwayatPages, p + 1))}
-                    disabled={safeRiwayatPage >= totalRiwayatPages}
-                    className="min-h-[44px] rounded-xl border border-border dark:border-slate-600 px-4 py-2.5 text-sm font-medium text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none transition"
-                  >
-                    Selanjutnya
-                  </button>
-                </div>
-              </div>
-            )}
+                  <div className="overflow-x-auto -mx-6 px-6">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="text-left border-b border-border/50 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 text-slate-400">
+                          <th className="px-4 py-4 font-black text-[10px] uppercase tracking-[0.2em] first:rounded-tl-2xl">Tanggal</th>
+                          <th className="px-4 py-4 font-black text-[10px] uppercase tracking-[0.2em]">Tipe</th>
+                          <th className="px-4 py-4 font-black text-[10px] uppercase tracking-[0.2em]">Jumlah</th>
+                          <th className="px-4 py-4 font-black text-[10px] uppercase tracking-[0.2em] hidden md:table-cell">Celengan</th>
+                          <th className="px-4 py-4 font-black text-[10px] uppercase tracking-[0.2em] hidden lg:table-cell">Catatan</th>
+                          <th className="px-4 py-4 font-black text-[10px] uppercase tracking-[0.2em] text-right last:rounded-tr-2xl">Aksi</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/20 dark:divide-slate-700/50">
+                        {paginatedEntries.map((entry) => (
+                          <tr key={entry.id} className="group transition-all hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                            <td className="px-4 py-4 font-bold text-[10px] text-slate-400 uppercase tracking-tighter whitespace-nowrap">
+                              {formatShortDate(entry.created_at)}
+                            </td>
+                            <td className="px-4 py-4">
+                              <div className="flex items-center gap-2">
+                                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-bold text-xs ${entry.type === "deposit" ? "bg-income/10 text-income" : "bg-expense/10 text-expense"}`}>
+                                  {entry.type === "deposit" ? "↓" : "↑"}
+                                </div>
+                                <span className={`text-xs font-black uppercase tracking-widest ${entry.type === "deposit" ? "text-income" : "text-expense"}`}>
+                                  {entry.type === "deposit" ? "Setor" : "Tarik"}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-4 tabular-nums font-black text-sm">
+                              <span className={entry.type === "deposit" ? "text-income" : "text-expense"}>
+                                {entry.type === "deposit" ? "+" : "-"} {formatCurrency(Number(entry.amount))}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 hidden md:table-cell">
+                              <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border border-slate-200/50 dark:border-slate-700/50">
+                                {getPotLabel(entry.pot_id ?? null)}
+                              </span>
+                            </td>
+                            <td className="px-4 py-4 hidden lg:table-cell">
+                                <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 italic max-w-[150px] truncate" title={entry.note || ""}>
+                                  {entry.note || "—"}
+                                </p>
+                            </td>
+                            <td className="px-4 py-4 text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                <button
+                                  onClick={() => setEditingEntry(entry)}
+                                  className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-primary/10 hover:text-primary text-slate-400 transition-all"
+                                  title="Edit"
+                                >
+                                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
+                                </button>
+                                <button
+                                  onClick={() => setDeletingEntry(entry)}
+                                  className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-expense/10 hover:text-expense text-slate-400 transition-all"
+                                  title="Hapus"
+                                >
+                                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {totalRiwayatPages > 1 && (
+                    <div className="flex items-center justify-between pt-6 border-t border-border/30 dark:border-slate-700">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Halaman {safeRiwayatPage} / {totalRiwayatPages}</p>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setRiwayatPage((p) => Math.max(1, p - 1))}
+                          disabled={safeRiwayatPage <= 1}
+                          className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 disabled:opacity-30 hover:bg-primary/10 hover:text-primary transition-all"
+                        >
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRiwayatPage((p) => Math.min(totalRiwayatPages, p + 1))}
+                          disabled={safeRiwayatPage >= totalRiwayatPages}
+                          className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 disabled:opacity-30 hover:bg-primary/10 hover:text-primary transition-all"
+                        >
+                          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </>
               );
             })()}
-          </>
+          </div>
         )}
+
+        <EditSavingsEntryModal
+          entry={editingEntry}
+          pots={pots}
+          onClose={() => setEditingEntry(null)}
+          onSave={handleEdit}
+        />
+        <ConfirmModal
+          open={!!deletingEntry}
+          title="Hapus riwayat ini?"
+          description="Tindakan ini tidak bisa dibatalkan."
+          confirmLabel="Ya, hapus"
+          cancelLabel="Batal"
+          variant="danger"
+          loading={deleteLoading}
+          onClose={() => setDeletingEntry(null)}
+          onConfirm={async () => {
+            if (!deletingEntry) return;
+            setDeleteLoading(true);
+            try {
+              await handleDelete(deletingEntry.id);
+              setDeletingEntry(null);
+            } finally {
+              setDeleteLoading(false);
+            }
+          }}
+        >
+          {deletingEntry && (
+            <div className="rounded-xl border border-border dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-3">
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-200 uppercase tracking-tight">
+                {deletingEntry.type === "deposit" ? "Setoran" : "Penarikan"} — {formatCurrency(deletingEntry.amount)}
+              </p>
+              {deletingEntry.note && (
+                <p className="mt-0.5 text-sm text-muted dark:text-slate-400 italic">
+                  "{deletingEntry.note}"
+                </p>
+              )}
+            </div>
+          )}
+        </ConfirmModal>
+
+        <ConfirmModal
+          open={!!potToDelete}
+          title="Hapus celengan ini?"
+          description="Riwayat setor/tarik di celengan ini akan dipindahkan ke Umum."
+          confirmLabel="Ya, hapus"
+          cancelLabel="Batal"
+          variant="danger"
+          loading={deletePotLoading}
+          onClose={() => setPotToDelete(null)}
+          onConfirm={async () => {
+            if (!potToDelete) return;
+            setDeletePotLoading(true);
+            try {
+              const { error: err } = await supabase
+                .from("savings_pots")
+                .delete()
+                .eq("id", potToDelete.id)
+                .eq("user_id", userId);
+              if (err) throw err;
+              if (selectedPotId === potToDelete.id) setSelectedPotId(null);
+              setPotToDelete(null);
+              showToast("Celengan dihapus");
+              fetchPots();
+              fetchEntries();
+            } catch {
+              showToast("Gagal menghapus celengan", "error");
+            } finally {
+              setDeletePotLoading(false);
+            }
+          }}
+        >
+          {potToDelete && (
+            <div className="rounded-xl border border-border dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-3">
+              <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                {potToDelete.name}
+              </p>
+              <p className="mt-0.5 text-sm text-muted dark:text-slate-400">
+                Saldo: {formatCurrency(balanceByPot[potToDelete.id] ?? 0)}
+              </p>
+            </div>
+          )}
+        </ConfirmModal>
       </section>
 
-      <EditSavingsEntryModal
-        entry={editingEntry}
-        pots={pots}
-        onClose={() => setEditingEntry(null)}
-        onSave={handleEdit}
-      />
-      <ConfirmModal
-        open={!!deletingEntry}
-        title="Hapus riwayat ini?"
-        description="Tindakan ini tidak bisa dibatalkan."
-        confirmLabel="Ya, hapus"
-        cancelLabel="Batal"
-        variant="danger"
-        loading={deleteLoading}
-        onClose={() => setDeletingEntry(null)}
-        onConfirm={async () => {
-          if (!deletingEntry) return;
-          setDeleteLoading(true);
-          try {
-            await handleDelete(deletingEntry.id);
-            setDeletingEntry(null);
-          } finally {
-            setDeleteLoading(false);
-          }
-        }}
-      >
-        {deletingEntry && (
-          <div className="rounded-xl border border-border dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-3">
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-              {deletingEntry.type === "deposit" ? "Setor" : "Tarik"}{" "}
-              {formatCurrency(Number(deletingEntry.amount))}
-            </p>
-            {deletingEntry.note && (
-              <p className="mt-0.5 text-sm text-muted dark:text-slate-400">{deletingEntry.note}</p>
-            )}
-          </div>
-        )}
-      </ConfirmModal>
-
-      <ConfirmModal
-        open={!!potToDelete}
-        title="Hapus celengan ini?"
-        description="Riwayat setor/tarik di celengan ini akan dipindahkan ke Umum."
-        confirmLabel="Ya, hapus"
-        cancelLabel="Batal"
-        variant="danger"
-        loading={deletePotLoading}
-        onClose={() => setPotToDelete(null)}
-        onConfirm={async () => {
-          if (!potToDelete) return;
-          setDeletePotLoading(true);
-          try {
-            const { error: err } = await supabase
-              .from("savings_pots")
-              .delete()
-              .eq("id", potToDelete.id)
-              .eq("user_id", userId);
-            if (err) throw err;
-            if (selectedPotId === potToDelete.id) setSelectedPotId(null);
-            setPotToDelete(null);
-            showToast("Celengan dihapus");
-            fetchPots();
-            fetchEntries();
-          } catch {
-            showToast("Gagal menghapus celengan", "error");
-          } finally {
-            setDeletePotLoading(false);
-          }
-        }}
-      >
-        {potToDelete && (
-          <div className="rounded-xl border border-border dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-3">
-            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
-              {potToDelete.name}
-            </p>
-            <p className="mt-0.5 text-sm text-muted dark:text-slate-400">
-              Saldo: {formatCurrency(balanceByPot[potToDelete.id] ?? 0)}
-            </p>
-          </div>
-        )}
-      </ConfirmModal>
     </div>
   );
 }

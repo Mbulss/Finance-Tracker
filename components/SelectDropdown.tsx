@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useLayoutEffect } from "react";
+import { createPortal } from "react-dom";
 
 interface SelectDropdownProps {
   value: string;
@@ -18,69 +19,119 @@ export function SelectDropdown({
   className = "",
 }: SelectDropdownProps) {
   const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
   const ref = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const selectedLabel = value === "all" || !value ? placeholder : options.find((o) => o.value === value)?.label ?? value;
 
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+  const updatePosition = () => {
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setPosition({
+        top: rect.bottom + window.scrollY,
+        left: rect.left + window.scrollX,
+        width: rect.width,
+      });
     }
-    if (open) document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+  };
+
+  useLayoutEffect(() => {
+    if (open) updatePosition();
   }, [open]);
 
-  return (
-    <div className={`relative ${className}`} ref={ref}>
+  useEffect(() => {
+    if (!open) return;
+
+    function handleEvent() {
+      updatePosition();
+    }
+
+    function handleClickOutside(e: MouseEvent) {
+      if (
+        ref.current && !ref.current.contains(e.target as Node) &&
+        buttonRef.current && !buttonRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    }
+
+    window.addEventListener("scroll", handleEvent, true);
+    window.addEventListener("resize", handleEvent);
+    document.addEventListener("mousedown", handleClickOutside);
+
+    return () => {
+      window.removeEventListener("scroll", handleEvent, true);
+      window.removeEventListener("resize", handleEvent);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open]);
+
+  const dropdownContent = open && (
+    <div
+      ref={ref}
+      style={{
+        position: 'absolute',
+        top: position.top + 8,
+        left: position.left,
+        width: position.width,
+        zIndex: 9999,
+      }}
+      className="max-h-72 min-w-[200px] overflow-auto rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 py-2 shadow-2xl animate-fade-in-up"
+    >
       <button
         type="button"
+        onClick={() => {
+          onChange("all");
+          setOpen(false);
+        }}
+        className={`flex w-full items-center px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest transition ${
+          value === "all" || !value
+            ? "bg-primary/10 text-primary"
+            : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 dark:text-slate-400"
+        }`}
+      >
+        {placeholder}
+      </button>
+      <div className="h-px bg-slate-100 dark:bg-slate-800 my-1 mx-2" />
+      {options.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => {
+            onChange(opt.value);
+            setOpen(false);
+          }}
+          className={`flex w-full items-center px-5 py-3 text-left text-xs font-bold transition ${
+            value === opt.value
+              ? "bg-primary/10 text-primary"
+              : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
+          }`}
+        >
+          {opt.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  return (
+    <div className={`relative ${className}`}>
+      <button
+        ref={buttonRef}
+        type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-[42px] min-w-[140px] items-center justify-between gap-2 rounded-xl border border-border dark:border-slate-600 bg-card dark:bg-slate-800 px-4 py-2.5 text-sm font-medium text-slate-800 dark:text-slate-100 shadow-sm transition hover:bg-slate-50 dark:hover:bg-slate-700 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 sm:min-w-[160px]"
+        className="flex h-12 w-full min-w-[160px] items-center justify-between gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl px-5 text-sm font-bold text-slate-900 dark:text-white shadow-sm transition hover:bg-slate-50 dark:hover:bg-slate-700 focus:border-primary focus:ring-4 focus:ring-primary/10"
       >
         <span className="truncate">{selectedLabel}</span>
         <svg
-          className={`h-4 w-4 shrink-0 text-muted dark:text-slate-400 transition-transform ${open ? "rotate-180" : ""}`}
+          className={`h-4 w-4 shrink-0 text-slate-400 transition-transform duration-300 ${open ? "rotate-180" : ""}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {open && (
-        <div className="absolute left-0 top-full z-50 mt-1.5 max-h-60 w-full min-w-[160px] overflow-auto rounded-xl border border-border dark:border-slate-600 bg-card dark:bg-slate-800 py-1 shadow-card">
-          <button
-            type="button"
-            onClick={() => {
-              onChange("all");
-              setOpen(false);
-            }}
-            className={`flex w-full items-center px-4 py-2.5 text-left text-sm transition ${
-              value === "all" || !value
-                ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary"
-                : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
-            }`}
-          >
-            {placeholder}
-          </button>
-          {options.map((opt) => (
-            <button
-              key={opt.value}
-              type="button"
-              onClick={() => {
-                onChange(opt.value);
-                setOpen(false);
-              }}
-              className={`flex w-full items-center px-4 py-2.5 text-left text-sm transition ${
-                value === opt.value
-                  ? "bg-primary/10 text-primary dark:bg-primary/20 dark:text-primary"
-                  : "text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-700"
-              }`}
-            >
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
+      {typeof document !== "undefined" && createPortal(dropdownContent, document.body)}
     </div>
   );
 }

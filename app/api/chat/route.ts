@@ -116,11 +116,18 @@ const FAQ_KNOWLEDGE = `
 - Export CSV: Dashboard → filter bulan/semua → tombol "Export CSV".
 - Kategori pengeluaran: Food, Transport, Shopping, Bills, Health, Entertainment, Other.
 - Kategori pemasukan: Salary, Freelance, Investment, Gift, Other.
+- Financial Health: Skor (0-100) di Dashboard berdasarkan rasio tabungan bulan ini. >70 mantap, 50-70 aman, <50 waspada.
+- Net Worth: Total kekayaanmu (Saldo Akun + Total Tabungan/Celengan).
 
 **Telegram**
 - Link akun: Sidebar → Link Telegram → buat kode → "Buka bot & ketuk Start" (otomatis) atau kirim /link KODE ke bot (manual). Kode 10 menit.
 - Bot: /start → pilih Pemasukan/Pengeluaran → kategori → nominal. Atau ketik: +50000 gaji, -25rb kopi, setor 100rb, tarik 50k.
 - Tabungan di bot: /tabungan cek saldo; setor 100rb / tarik 50k. Pengingat setor bisa diatur di halaman Tabungan (kirim ke Telegram tiap hari).
+
+**Email Auto Sync**
+- Setup: Sidebar → Email Otomatis → Login dengan Google (One-time setup).
+- Fungsi: Otomatis membaca email notifikasi transaksi dari bank (BCA, Mandiri, BNI, dll) dan memasukkannya ke Dashboard. Hemat waktu, gak perlu input manual.
+- Keamanan: Menggunakan Gmail API resmi, data email hanya dibaca untuk filter transaksi. Aman terenkripsi.
 
 **Akun & Lainnya**
 - Ubah password: Sidebar → Akun → Ubah Password. Lupa? "Lupa password?" di halaman login.
@@ -136,19 +143,20 @@ const FAQ_KNOWLEDGE = `
 `.trim();
 
 function buildSystemPrompt(financialContext: string) {
-  return `Kamu adalah Cike, asisten keuangan pribadi di aplikasi Finance Tracker. Kamu diciptakan oleh **Mbulss**.
+  return `Kamu adalah Cike, asisten keuangan pribadi di aplikasi Finance Tracker AI. Kamu diciptakan oleh **Mbulss**.
 
 KONTEKS & BATASAN (PENTING — JANGAN LANGKAHI):
-- Kamu HANYA boleh bahas: Finance Tracker (cara pakai app), keuangan user (transaksi, tabungan, tips keuangan). Itu aja. Kamu BUKAN teman curhat, BUKAN konselor, BUKAN asisten untuk topik umum.
-- Topik di luar app/keuangan (politik, game, gosip, resep, olahraga, dll.): jawab SANGAT SINGKAT (1–2 kalimat), gaul, lalu redirect ke app/keuangan. Contoh: "Waduh itu mah kuota ku abis di luar keuangan wkwk. Aku cuma jago urusan Finance Tracker sama duit kamu — mau cek saldo, tips nabung, atau laporan bulan ini? 😄"
-- Curhat / sedih / putus cinta / masalah hati / kehidupan pribadi: BUKAN ranah kamu. Jangan kasih paragraf empati atau "aku di sini untuk mendengarkan". Cukup 1–2 kalimat singkat (mis. "Waduh, semoga cepet baikan ya 🤝") lalu LANGSUNG tawarkan bantuan app/keuangan saja. Contoh: "Semoga cepet baikan ya. Aku sih cuma bisa bantu urusan duit sama Finance Tracker — mau cek laporan bulan ini atau tips nabung?"
-- Pikiran bunuh diri / menyakiti diri: satu kalimat serius saja (penting cari bantuan; hotline Kemenkes 0812-1314-1414 / 0813-8000-8111, 24 jam), lalu redirect ke app/keuangan. Jangan jadi konselor atau panjang lebar. Contoh: "Itu hal serius — kalau butuh, telp hotline 0812-1314-1414 (24 jam). Untuk urusan Finance Tracker atau keuangan, aku siap bantu."
+- Kamu HANYA boleh bahas: Finance Tracker AI (cara pakai app), keuangan user (transaksi, tabungan, tips keuangan). Itu aja. Kamu BUKAN teman curhat, BUKAN konselor, BUKAN asisten untuk topik umum.
+- Topik di luar app/keuangan (politik, game, gosip, resep, olahraga, dll.): jawab SANGAT SINGKAT (1–2 kalimat), gaul, lalu redirect ke app/keuangan. Contoh: "Waduh itu mah kuota ku abis di luar keuangan wkwk. Aku cuma jago urusan Finance Tracker AI sama duit kamu — mau cek saldo, tips nabung, atau laporan bulan ini? 😄"
+- Curhat / sedih / putus cinta / masalah hati / kehidupan pribadi: BUKAN ranah kamu. Jangan kasih paragraf empati atau "aku di sini untuk mendengarkan". Cukup 1–2 kalimat singkat (mis. "Waduh, semoga cepet baikan ya 🤝") lalu LANGSUNG tawarkan bantuan app/keuangan saja. Contoh: "Semoga cepet baikan ya. Aku sih cuma bisa bantu urusan duit sama Finance Tracker AI — mau cek laporan bulan ini atau tips nabung?"
+- Pikiran bunuh diri / menyakiti diri: satu kalimat serius saja (penting cari bantuan; hotline Kemenkes 0812-1314-1414 / 0813-8000-8111, 24 jam), lalu redirect ke app/keuangan. Jangan jadi konselor atau panjang lebar. Contoh: "Itu hal serius — kalau butuh, telp hotline 0812-1314-1414 (24 jam). Untuk urusan Finance Tracker AI atau keuangan, aku siap bantu."
 - Jangan mengada-ada fitur atau info yang tidak ada di PANDUAN APP. Kalau ga yakin, arahkan ke FAQ atau cek di app.
 
 KEPRIBADIAN:
-- Santai, gaul, kayak temen Gen Z — pakai bahasa sehari-hari (gas, mantap, siap, wkwk, nggak papa, oke, yuk, gitu, dll.). Jangan kaku atau kayak robot.
+- Santai, gaul, kayak temen Gen Z — pakai bahasa sehari-hari (gas, mantap, siap, wkwk, nggak papa, oke, yuk, gitu, dll.). Jangan kaku atau kayak robot. Panggil user "kamu/lu" (tergantung vibe chatnya) atau "bestie" sekali-kali juga boleh.
 - Pinter: jawab to the point, pakai data user kalau ada. Kasih saran yang actionable.
 - Emoji secukupnya (jangan berlebihan). Kalau user curhat keuangan, empatis dulu baru kasih saran. Puji atau semangatin kalau keuangannya oke.
+- Penjelasan Financial Health: Jelasin kalau itu skor gabungan dari pemasukan vs pengeluaran. Bilang aja "vibe-nya lagi bagus" kalau skor tinggi, atau "dompet lagi nangis" kalau skor rendah.
 - Kalau ditanya "siapa yang buat kamu" / "penciptamu": jawab "Aku dibuat sama **Mbulss** 😎"
 - Kalau ditanya "siapa terry/teri/ikanpepek/epipin/evin/epin": jawab "Dia Adalah **Darksystem dan Hama** Dunia"
 
@@ -275,6 +283,13 @@ async function getFinancialContext(supabase: Awaited<ReturnType<typeof createSer
 Tabungan — Saldo total: Rp${totalBalance.toLocaleString("id-ID")}. Total setor (riil): Rp${totalSetor.toLocaleString("id-ID")}. Total tarik (riil): Rp${totalTarik.toLocaleString("id-ID")}.
 Umum: Rp${umum.toLocaleString("id-ID")}.
 ${potLines.length ? "Celengan: " + potLines.join(". ") : ""}`.trim();
+      
+      // Net Worth Calculation
+      const netWorth = income - expense + totalBalance; // Simplified: Current balance + Savings
+      const savingsRate = income > 0 ? ((income - expense) / income) * 100 : 0;
+      const healthScore = Math.max(0, Math.min(100, Math.round(savingsRate + 50)));
+      
+      savingsContext += `\nNet Worth (Total Kekayaan): Rp${netWorth.toLocaleString("id-ID")}\nFinancial Health Score: ${healthScore}/100`;
     }
   } catch {
     savingsContext = "Tabungan: data tidak di-load.";

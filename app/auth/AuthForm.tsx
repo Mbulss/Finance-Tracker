@@ -191,7 +191,7 @@ export function AuthForm({
       <div className="relative w-full max-w-md animate-fade-in-up rounded-2xl border border-border dark:border-slate-700 bg-card/95 dark:bg-slate-800/95 p-8 shadow-card backdrop-blur-sm">
         <div className="mb-6 flex items-center justify-center gap-3">
           <img src="/logo.png" alt="" className="h-14 w-14 rounded-2xl object-contain" />
-          <span className="text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100">Finance Tracker</span>
+          <span className="text-2xl font-bold tracking-tight text-slate-800 dark:text-slate-100">Finance Tracker AI</span>
         </div>
         <p className="mb-6 text-center text-sm text-muted dark:text-slate-400">Kelola keuangan kamu dengan mudah</p>
 

@@ -1,18 +1,44 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { TELEGRAM_BOT_URL, TELEGRAM_BOT_USERNAME } from "@/lib/constants";
+import { useState, useRef } from "react";
+import { useToast } from "@/components/ToastContext";
+import { useRouter } from "next/navigation";
+import { TELEGRAM_BOT_URL } from "@/lib/constants";
 import { openTelegramUrl } from "@/lib/utils";
 
-export function LinkTelegram() {
+interface LinkTelegramProps {
+  initialLinked?: boolean;
+}
+
+export function LinkTelegram({ initialLinked = false }: LinkTelegramProps) {
   const [code, setCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [disconnecting, setDisconnecting] = useState(false);
   const [error, setError] = useState("");
-  const [mounted, setMounted] = useState(false);
+  const [isLinked, setIsLinked] = useState<boolean>(initialLinked);
 
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const { showToast } = useToast();
+  const router = useRouter();
+  const isInitialRender = useRef(true);
+
+  async function handleDisconnect() {
+    setDisconnecting(true);
+    try {
+      const res = await fetch("/api/telegram/disconnect", { method: "POST" });
+      if (res.ok) {
+        setIsLinked(false);
+        setCode(null);
+        showToast("Telegram berhasil diputus", "success");
+        router.refresh();
+      } else {
+        showToast("Gagal memutus koneksi Telegram", "error");
+      }
+    } catch {
+      showToast("Gagal memutus koneksi Telegram", "error");
+    } finally {
+      setDisconnecting(false);
+    }
+  }
 
   async function handleGenerate() {
     setLoading(true);
@@ -30,16 +56,12 @@ export function LinkTelegram() {
     }
   }
 
-  useEffect(() => {
-    if (typeof window !== "undefined" && window.location.hash === "#otomatis") {
-      document.getElementById("otomatis")?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, []);
-
-  if (!mounted) return null;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-10 sm:space-y-14 pb-20 px-4 sm:px-6">
+    <div className="max-w-6xl mx-auto space-y-8 sm:space-y-10 pb-20 px-4 sm:px-6">
+
+
+
       {/* --- HERO SECTION --- (Standardized Gmail Style) */}
       <div className="relative overflow-hidden rounded-[2.5rem] sm:rounded-[3.5rem] border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xl p-8 sm:p-14 lg:p-16 animate-fade-in-up">
         <div className="absolute -top-32 -right-32 w-80 h-80 bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
@@ -52,17 +74,24 @@ export function LinkTelegram() {
               Telegram Assistant
             </div>
             <div className="space-y-4">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black text-slate-900 dark:text-white tracking-tighter leading-tight">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tighter leading-tight">
                  Link Your <span className="text-primary italic">Telegram Bot.</span>
               </h1>
-              <p className="text-base sm:text-lg lg:text-xl text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-xl mx-auto xl:mx-0 animate-fade-in [animation-delay:300ms]">
+              <p className="text-lg text-slate-500 dark:text-slate-400 font-medium leading-relaxed max-w-xl mx-auto xl:mx-0 animate-fade-in [animation-delay:300ms]">
                 Catat transaksi secepat kilat langsung dari chat tanpa perlu buka browser. Akun tersinkronisasi otomatis dengan asisten robot pintar kami.
               </p>
             </div>
             <div className="flex flex-wrap justify-center xl:justify-start gap-3 sm:gap-4 animate-fade-in [animation-delay:600ms]">
               {["Cepat", "Aman", "Otomatis"].map((tag, i) => (
                 <span key={tag} className="flex items-center gap-2 bg-slate-50 dark:bg-slate-800/50 px-4 py-2 rounded-2xl border border-slate-200 dark:border-slate-700 font-black text-[10px] sm:text-xs text-slate-500 dark:text-slate-400 hover:scale-105 transition-all hover:bg-white dark:hover:bg-slate-800 shadow-sm">
-                  {i === 0 ? "🚀" : i === 1 ? "🔒" : "⚡"} {tag}
+                   {i === 0 ? (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                   ) : i === 1 ? (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                   ) : (
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
+                   )}
+                   {tag}
                 </span>
               ))}
             </div>
@@ -90,9 +119,11 @@ export function LinkTelegram() {
           <div className="relative flex flex-col gap-10 h-full">
             <div className="space-y-8 flex-1">
               <div className="flex items-center gap-5">
-                <span className="flex h-16 w-16 items-center justify-center rounded-[1.75rem] bg-white dark:bg-slate-800 text-3xl shadow-lg ring-1 ring-slate-100 dark:ring-slate-700/50 group-hover:rotate-12 transition-transform">⚡</span>
+                <span className="flex h-16 w-16 items-center justify-center rounded-[1.75rem] bg-white dark:bg-slate-800 text-primary shadow-lg ring-1 ring-slate-100 dark:ring-slate-700/50 group-hover:rotate-12 transition-transform">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                </span>
                 <div className="space-y-1">
-                  <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-none">Link Otomatis</h2>
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white leading-none">Link Otomatis</h2>
                   <p className="text-[10px] sm:text-xs font-black text-primary uppercase tracking-[0.25em] mt-2">Recommended Setup</p>
                 </div>
               </div>
@@ -114,7 +145,7 @@ export function LinkTelegram() {
               </div>
 
               <div className="bg-amber-100/40 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/40 p-5 rounded-3xl text-xs font-bold text-amber-800 dark:text-amber-200">
-                ⚠️ <strong className="ml-1 text-[10px] uppercase tracking-wider">PENTING:</strong> Tidak mendukung Telegram Web.
+                <strong className="text-[10px] uppercase tracking-wider">Note:</strong> Tidak mendukung Telegram Web.
               </div>
             </div>
 
@@ -161,9 +192,11 @@ export function LinkTelegram() {
           <div className="relative flex flex-col gap-10 h-full">
             <div className="space-y-8 flex-1">
               <div className="flex items-center gap-5">
-                <span className="flex h-16 w-16 items-center justify-center rounded-[1.75rem] bg-slate-50 dark:bg-slate-800 text-3xl shadow-sm ring-1 ring-slate-100 dark:ring-slate-700/50 group-hover:rotate-12 transition-transform">✏️</span>
+                <span className="flex h-16 w-16 items-center justify-center rounded-[1.75rem] bg-slate-50 dark:bg-slate-800 text-slate-400 dark:text-slate-500 shadow-sm ring-1 ring-slate-100 dark:ring-slate-700/50 group-hover:rotate-12 transition-transform">
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                </span>
                 <div className="space-y-1">
-                  <h2 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white leading-none">Manual Link</h2>
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white leading-none">Manual Link</h2>
                   <p className="text-[10px] sm:text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.25em] mt-2">Bot Support Center</p>
                 </div>
               </div>
@@ -223,12 +256,60 @@ export function LinkTelegram() {
         </section>
       </div>
 
+      {/* --- STATUS BANNER --- */}
+      <div className={`relative overflow-hidden rounded-[2.5rem] border-2 p-6 sm:p-8 shadow-xl flex flex-col sm:flex-row items-center gap-6 transition-all ${
+        isLinked
+          ? "border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-950/20"
+          : "border-orange-300/30 bg-orange-50/50 dark:bg-orange-950/20"
+      }`}>
+        <div className={`flex h-16 w-16 shrink-0 items-center justify-center rounded-[1.5rem] shadow-lg ${
+          isLinked ? "bg-emerald-500 shadow-emerald-500/30 text-white" : "bg-orange-400 shadow-orange-400/30 text-white"
+        }`}>
+          {isLinked ? (
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+          ) : (
+            <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 17c-.77 1.333.192 3 1.732 3z" /></svg>
+          )}
+        </div>
+        <div className="flex-1 text-center sm:text-left space-y-1">
+          <div className="flex items-center justify-center sm:justify-start gap-3">
+            <span className={`text-[10px] font-black uppercase tracking-[0.2em] px-3 py-1 rounded-full ${
+              isLinked
+                ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400"
+                : "bg-orange-500/15 text-orange-700 dark:text-orange-400"
+            }`}>
+              {isLinked ? "● Terhubung" : "● Belum Terhubung"}
+            </span>
+          </div>
+          <p className="text-base font-bold text-slate-800 dark:text-white">
+            {isLinked ? "Akun kamu sudah terhubung dengan bot Telegram!" : "Akun belum terhubung ke bot Telegram."}
+          </p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {isLinked
+              ? "Transaksi dari chat Telegram otomatis masuk ke dashboard kamu."
+              : "Link sekarang untuk catat transaksi langsung dari Telegram."}
+          </p>
+        </div>
+        {isLinked && (
+          <button
+            onClick={handleDisconnect}
+            disabled={disconnecting}
+            className="shrink-0 flex items-center gap-2 px-6 py-3 rounded-2xl border-2 border-red-200 dark:border-red-900/50 text-red-600 dark:text-red-400 text-xs font-black uppercase tracking-widest hover:bg-red-50 dark:hover:bg-red-950/30 active:scale-95 transition-all disabled:opacity-50"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" /></svg>
+            {disconnecting ? "Memutus..." : "Putuskan"}
+          </button>
+        )}
+      </div>
+
       {/* --- TIPS SECTION --- (Gmail Style) */}
       <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] sm:rounded-[3.5rem] p-10 sm:p-14 border border-slate-200 dark:border-slate-800 animate-fade-in-up [animation-delay:600ms] transition-all group shadow-lg">
         <div className="flex flex-col md:flex-row items-center gap-10">
-          <div className="h-20 w-20 sm:h-24 sm:w-24 shrink-0 flex items-center justify-center rounded-[2rem] bg-emerald-500 text-white text-4xl sm:text-5xl shadow-xl shadow-emerald-500/20 animate-pulse-subtle group-hover:scale-110 transition-transform">🎁</div>
+          <div className="h-20 w-20 sm:h-24 sm:w-24 shrink-0 flex items-center justify-center rounded-[2rem] bg-emerald-500 text-white shadow-xl shadow-emerald-500/20 animate-pulse-subtle group-hover:scale-110 transition-transform">
+            <svg className="w-10 h-10 sm:w-12 sm:h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+          </div>
           <div className="space-y-4 text-center md:text-left">
-            <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">Tips Anti Ribet! 🚀</h3>
+            <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">Tips Anti Ribet</h3>
             <p className="text-base sm:text-lg font-medium text-slate-500 dark:text-slate-400 leading-relaxed max-w-4xl">
               Biar makin pro, coba kirim format cepat: <span className="text-emerald-600 dark:text-emerald-400 font-bold px-3 py-1 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-emerald-100 dark:border-emerald-500/20 mx-1 whitespace-nowrap">+50rb gaji</span> atau <span className="text-red-500 font-bold px-3 py-1 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-red-100 dark:border-red-500/20 mx-1 whitespace-nowrap">-25k kopi</span>. Data bakal langsung sinkron!
             </p>

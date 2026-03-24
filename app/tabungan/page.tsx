@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import { createSupabaseAdmin } from "@/lib/supabase/admin";
 import { DashboardLayout } from "@/components/Layout/DashboardLayout";
 import { TabunganContent } from "@/components/TabunganContent";
 
@@ -13,6 +14,16 @@ export default async function TabunganPage() {
     redirect("/auth");
   }
 
+  // Gunakan admin client untuk bypass RLS pada tabel telegram_links
+  const admin = createSupabaseAdmin();
+  const { data: telegramLink } = await admin
+    .from("telegram_links")
+    .select("chat_id")
+    .eq("user_id", user.id)
+    .maybeSingle();
+
+  const isTelegramLinked = !!telegramLink?.chat_id;
+
   return (
     <DashboardLayout>
       <div className="mx-auto max-w-6xl space-y-6">
@@ -22,7 +33,7 @@ export default async function TabunganPage() {
             Uang dingin — setor dan tarik kapan saja. Pencatatan terpisah dari pemasukan/pengeluaran harian.
           </p>
         </header>
-        <TabunganContent userId={user.id} />
+        <TabunganContent userId={user.id} initialTelegramLinked={isTelegramLinked} />
       </div>
     </DashboardLayout>
   );

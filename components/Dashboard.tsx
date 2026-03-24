@@ -14,6 +14,8 @@ import { MonthlyBarChart } from "./MonthlyBarChart";
 import { MonthPicker } from "./MonthPicker";
 import { useToast } from "./ToastContext";
 import { SkeletonCard, SkeletonTable } from "./Skeleton";
+import { SpendingInsights } from "./SpendingInsights";
+import { ImportCSV } from "./ImportCSV";
 
 interface DashboardProps {
   userId: string;
@@ -31,6 +33,9 @@ export function Dashboard({ userId }: DashboardProps) {
   const [optimisticTransactions, setOptimisticTransactions] = useState<Transaction[]>([]);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set());
   const [prefillFromPhoto, setPrefillFromPhoto] = useState<PrefillFromPhoto | null>(null);
+  const [savingsEntries, setSavingsEntries] = useState<{ amount: number; type: "deposit" | "withdraw" }[]>([]);
+  const [totalSavings, setTotalSavings] = useState(0);
+  const [showImport, setShowImport] = useState(false);
   const liveUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const supabase = createClient();
   const { showToast } = useToast();
@@ -43,6 +48,21 @@ export function Dashboard({ userId }: DashboardProps) {
       .order("created_at", { ascending: false });
     if (!error) setTransactions(data ?? []);
     setOptimisticTransactions([]);
+    
+    // Fetch savings for Net Worth
+    const { data: savingsData } = await supabase
+      .from("savings_entries")
+      .select("amount, type")
+      .eq("user_id", userId);
+    
+    if (savingsData) {
+      const total = savingsData.reduce((acc, curr) => {
+        return acc + (curr.type === "deposit" ? Number(curr.amount) : -Number(curr.amount));
+      }, 0);
+      setTotalSavings(total);
+      setSavingsEntries(savingsData as any);
+    }
+    
     setLoading(false);
   }, [supabase, userId]);
 
@@ -157,61 +177,83 @@ export function Dashboard({ userId }: DashboardProps) {
     hour < 12 ? "Selamat pagi" : hour < 18 ? "Selamat siang" : "Selamat malam";
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6">
-      <header className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between animate-fade-in-up">
-        <div className="flex flex-wrap items-start gap-3 min-w-0">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-primary dark:text-sky-400">{greeting} 👋</p>
-            <h1 className="mt-0.5 text-xl font-bold tracking-tight text-slate-800 dark:text-slate-100 sm:text-3xl">Dashboard</h1>
-            <p className="mt-1 text-sm text-muted dark:text-slate-400">Ringkasan keuangan kamu</p>
+    <div className="relative mx-auto max-w-6xl space-y-10 pb-20">
+      {/* Decorative Background Elements - Optimized for scroll performance */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10 bg-transparent transform-gpu" aria-hidden>
+        <div className="absolute -top-[10%] -right-[10%] w-[40%] h-[40%] bg-primary/10 dark:bg-primary/5 rounded-full blur-[80px] animate-pulse transform-gpu" />
+        <div className="absolute top-[20%] -left-[10%] w-[30%] h-[30%] bg-emerald-500/10 dark:bg-emerald-500/5 rounded-full blur-[70px] transform-gpu" />
+        <div className="absolute bottom-[10%] right-[20%] w-[25%] h-[25%] bg-purple-500/10 dark:bg-purple-500/5 rounded-full blur-[60px] transform-gpu" />
+      </div>
+
+      <header className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between animate-fade-in-up">
+        <div className="flex flex-col gap-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-black uppercase tracking-widest">{greeting}</span>
+            {liveUpdated && (
+              <span className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest animate-fade-in">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                Live Updated
+              </span>
+            )}
           </div>
-          {liveUpdated && (
-            <span className="inline-flex items-center gap-1.5 rounded-full bg-primary/15 dark:bg-primary/25 px-3 py-2 text-xs font-medium text-primary dark:text-sky-400 animate-fade-in shrink-0">
-              <span className="h-1.5 w-1.5 rounded-full bg-primary dark:bg-sky-400" />
-              Data diperbarui
-            </span>
-          )}
+          <h1 className="text-4xl lg:text-5xl font-black tracking-tighter text-slate-900 dark:text-white uppercase transform-gpu">
+            Ringkasan <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-sky-400 will-change-transform">Keuangan</span>
+          </h1>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest transform-gpu">
+            Pantau arus kas dan kesehatan finansialmu
+          </p>
         </div>
-        <div className="flex flex-col gap-3 w-full sm:w-auto sm:flex-row sm:flex-wrap sm:items-center">
-          <div className="flex rounded-xl bg-slate-100 dark:bg-slate-700 p-1 shadow-sm w-full sm:w-auto">
+
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+          <div className="grid grid-cols-2 p-1 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border border-border/50 dark:border-slate-700/50 shadow-sm w-full sm:w-[220px] h-[52px]">
             <button
               type="button"
               onClick={() => setPeriodType("all")}
-              className={`flex-1 sm:flex-none min-h-[44px] rounded-lg px-4 py-3 sm:py-2.5 text-sm font-medium transition ${
+              className={`flex items-center justify-center px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
                 periodType === "all"
-                  ? "bg-card dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow soft"
-                  : "text-muted dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                  ? "bg-primary text-white shadow-lg shadow-primary/25"
+                  : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
               }`}
             >
-              Semua waktu
+              Semua
             </button>
             <button
               type="button"
               onClick={() => setPeriodType("month")}
-              className={`flex-1 sm:flex-none min-h-[44px] rounded-lg px-4 py-3 sm:py-2.5 text-sm font-medium transition ${
+              className={`flex items-center justify-center px-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
                 periodType === "month"
-                  ? "bg-card dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow soft"
-                  : "text-muted dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
+                  ? "bg-primary text-white shadow-lg shadow-primary/25"
+                  : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
               }`}
             >
-              Per bulan
+              Bulanan
             </button>
           </div>
           {periodType === "month" && (
-            <div className="w-full sm:w-auto">
-              <MonthPicker value={monthFilter} onChange={setMonthFilter} />
+            <div className="w-full sm:w-auto p-1 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border border-border/50 dark:border-slate-700/50 shadow-sm h-[52px] flex items-center">
+              <MonthPicker value={monthFilter} onChange={setMonthFilter} className="border-none bg-transparent shadow-none" />
             </div>
           )}
           <button
             type="button"
             onClick={handleExportCSV}
             disabled={filteredByMonth.length === 0}
-            className="min-h-[44px] w-full sm:w-auto flex items-center justify-center gap-2 rounded-xl border border-border dark:border-slate-600 bg-card dark:bg-slate-800 px-4 py-3 text-sm font-medium text-slate-700 dark:text-slate-200 transition hover:bg-slate-50 dark:hover:bg-slate-700 hover:shadow-card disabled:opacity-50 active:scale-[0.98]"
+            className="w-full sm:w-auto h-[52px] px-6 rounded-2xl flex items-center justify-center gap-2 bg-white dark:bg-slate-800 text-slate-700 dark:text-white border border-border/50 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-all font-black text-[10px] uppercase tracking-widest shadow-sm active:scale-95 disabled:opacity-50"
           >
-            <svg className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
             Export CSV
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowImport(true)}
+            className="w-full sm:w-auto h-[52px] px-6 rounded-2xl flex items-center justify-center gap-2 bg-primary text-white hover:bg-primary-hover transition-all font-black text-[10px] uppercase tracking-widest shadow-xl shadow-primary/20 active:scale-95"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8L12 3m0 0L7.5 7.5M12 3v13.5" />
+            </svg>
+            Impor CSV
           </button>
         </div>
       </header>
@@ -229,12 +271,23 @@ export function Dashboard({ userId }: DashboardProps) {
           </div>
         </>
       ) : (
-        <div className="animate-fade-in-up" style={{ animationDelay: "0.1s", opacity: 0, animationFillMode: "forwards" }}>
-          <SummaryCards
-            transactions={transactions}
-            monthFilter={periodType === "all" ? "all" : monthFilter}
-          />
-        </div>
+        <>
+          <div className="animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.1s" }}>
+            <SummaryCards
+              transactions={transactions}
+              totalSavings={totalSavings}
+              monthFilter={periodType === "all" ? "all" : monthFilter}
+            />
+          </div>
+          
+          {/* New Insights Section */}
+          <div className="animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.12s" }}>
+            <SpendingInsights 
+              transactions={transactions} 
+              monthFilter={periodType === "all" ? "all" : monthFilter} 
+            />
+          </div>
+        </>
       )}
 
       {!loading && balance < 0 && filteredByMonth.length > 0 && (
@@ -243,11 +296,12 @@ export function Dashboard({ userId }: DashboardProps) {
         </div>
       )}
 
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 p-4 sm:p-6 shadow-card transition-shadow hover:shadow-card-hover dark:hover:shadow-card-hover animate-fade-in-up" style={{ animationDelay: "0.15s", opacity: 0, animationFillMode: "forwards" }}>
-          <h2 className="mb-4 text-base font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">Tambah Transaksi</h2>
+      <div className="grid gap-8 lg:grid-cols-2">
+        <section className="group relative overflow-hidden rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-8 shadow-2xl transition-all hover:shadow-primary/5 animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.15s" }}>
+          <div className="absolute -right-24 -top-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none group-hover:bg-primary/10 transition-colors" />
+          <h2 className="mb-6 text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Tambah Transaksi</h2>
           <AddFromPhoto onParsed={setPrefillFromPhoto} />
-          <div className="mt-4">
+          <div className="mt-8">
             <AddTransactionForm
               userId={userId}
               onSuccess={fetchTransactions}
@@ -261,21 +315,26 @@ export function Dashboard({ userId }: DashboardProps) {
             />
           </div>
         </section>
-        <section className="flex flex-col rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 p-4 sm:p-6 shadow-card transition-shadow hover:shadow-card-hover dark:hover:shadow-card-hover animate-fade-in-up" style={{ animationDelay: "0.2s", opacity: 0, animationFillMode: "forwards" }}>
-          <h2 className="mb-2 text-base font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">Pengeluaran per Kategori</h2>
-          <p className="mb-4 text-sm text-muted dark:text-slate-400">{periodLabel}</p>
-          <div className="flex flex-1 items-center justify-center">
-            <div className="w-full">
+
+        <section className="group relative overflow-hidden flex flex-col rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-8 shadow-2xl transition-all hover:shadow-primary/5 animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.2s" }}>
+          <div className="absolute -right-24 -bottom-24 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/10 transition-colors" />
+          <div>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Pengeluaran Kategori</h2>
+            <p className="mb-6 text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">{periodLabel}</p>
+          </div>
+          <div className="flex flex-1 items-start justify-center">
+            <div className="w-full mt-4">
               <ExpensePieChart transactions={filteredByMonth} />
             </div>
           </div>
         </section>
       </div>
 
-      <section className="rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 p-4 sm:p-6 shadow-card transition-shadow hover:shadow-card-hover dark:hover:shadow-card-hover animate-fade-in-up" style={{ animationDelay: "0.25s", opacity: 0, animationFillMode: "forwards" }}>
-        <h2 className="mb-2 text-base font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">Pemasukan vs Pengeluaran</h2>
-        <p className="mb-4 text-sm text-muted dark:text-slate-400">
-          {periodType === "all" ? "Semua waktu (per bulan)" : "6 bulan terakhir"}
+      <section className="group relative overflow-hidden rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-8 shadow-2xl transition-all hover:shadow-primary/5 animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.25s" }}>
+        <div className="absolute -left-24 -top-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+        <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Tren Pemasukan vs Pengeluaran</h2>
+        <p className="mb-8 text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">
+          {periodType === "all" ? "Seluruh data bulanan" : "6 bulan terakhir"}
         </p>
         <MonthlyBarChart
           transactions={transactions}
@@ -283,15 +342,43 @@ export function Dashboard({ userId }: DashboardProps) {
         />
       </section>
 
-      <section className="rounded-2xl border border-border dark:border-slate-700 bg-card dark:bg-slate-800 p-4 sm:p-6 overflow-hidden shadow-card transition-shadow hover:shadow-card-hover dark:hover:shadow-card-hover animate-fade-in-up" style={{ animationDelay: "0.3s", opacity: 0, animationFillMode: "forwards" }}>
-        <h2 className="mb-2 text-base font-semibold text-slate-800 dark:text-slate-100 sm:text-lg">Daftar Transaksi</h2>
-        <p className="mb-4 text-sm text-muted dark:text-slate-400">{periodLabel}</p>
+      <section className="group relative rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-8 shadow-2xl transition-all hover:shadow-primary/5 animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.3s" }}>
+        <div className="absolute inset-0 overflow-hidden rounded-[2.5rem] pointer-events-none">
+          <div className="absolute -right-24 -top-24 w-64 h-64 bg-slate-500/5 rounded-full blur-3xl" />
+        </div>
+        <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter relative z-10">Riwayat Transaksi</h2>
+        <p className="mb-8 text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1 relative z-10">{periodLabel}</p>
         <TransactionTable
           transactions={displayedForTable}
           onDelete={handleDelete}
           onEdit={handleEdit}
         />
       </section>
+
+      {/* Import Modal */}
+      {showImport && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/40 dark:bg-black/80 backdrop-blur-md" onClick={() => setShowImport(false)} />
+          <div className="relative w-full max-w-lg overflow-hidden rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-2xl p-8 animate-in zoom-in-95 duration-200">
+             <div className="flex items-center justify-between mb-8">
+                <div>
+                   <h3 className="text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Impor Data</h3>
+                   <p className="text-[10px] font-black uppercase tracking-widest text-primary/70 mt-1">Upload file CSV hasil export kamu</p>
+                </div>
+                <button onClick={() => setShowImport(false)} className="p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-400">
+                   <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+             </div>
+             <ImportCSV 
+                userId={userId} 
+                onSuccess={() => {
+                   setShowImport(false);
+                   fetchTransactions();
+                }} 
+             />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -212,7 +212,7 @@ export async function POST(request: NextRequest) {
     text.includes("cara pakai");
   if (isHelp) {
     if (!userId) {
-      await sendMessageWithKeyboard(chatId, `👋 <b>Finance Tracker</b>\n\n${LINK_INSTRUCTIONS}`, MAIN_KEYBOARD);
+      await sendMessageWithKeyboard(chatId, `👋 <b>Finance Tracker AI</b>\n\n${LINK_INSTRUCTIONS}`, MAIN_KEYBOARD);
     } else {
       await sendWelcomeWithMainMenu(chatId);
     }
@@ -341,7 +341,7 @@ export async function POST(request: NextRequest) {
 
 async function sendWelcomeWithMainMenu(chatId: number): Promise<void> {
   if (!TELEGRAM_BOT_TOKEN) return;
-  const welcome = `👋 <b>Finance Tracker</b>
+  const welcome = `👋 <b>Finance Tracker AI</b>
 
 Ini bot buat catat pemasukan & pengeluaran kamu. Semua data masuk ke dashboard yang sama.
 
