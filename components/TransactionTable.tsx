@@ -132,35 +132,35 @@ export function TransactionTable({ transactions, onDelete, onEdit }: Transaction
             <tbody className="divide-y divide-border/20 dark:divide-slate-700/50">
               {paginated.map((t) => (
                 <tr key={t.id} className="group transition-all hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                  <td className="px-4 py-4 font-bold text-[10px] text-slate-400 uppercase tracking-tighter whitespace-nowrap">
+                  <td className="px-3 sm:px-4 py-4 font-bold text-[10px] text-slate-400 uppercase tracking-tighter whitespace-nowrap">
                      {formatDate(t.created_at)}
                   </td>
-                  <td className="px-4 py-4">
-                    <div className="flex items-center gap-2">
-                      <div className={`h-8 w-8 flex items-center justify-center rounded-lg font-bold text-xs ${t.type === "income" ? "bg-income/10 text-income" : "bg-expense/10 text-expense"}`}>
+                  <td className="px-3 sm:px-4 py-4">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <div className={`h-7 w-7 sm:h-8 sm:w-8 shrink-0 flex items-center justify-center rounded-lg font-bold text-[10px] sm:text-xs ${t.type === "income" ? "bg-income/10 text-income" : "bg-expense/10 text-expense"}`}>
                         {t.type === "income" ? "↓" : "↑"}
                       </div>
-                      <span className={`text-xs font-black uppercase tracking-widest ${t.type === "income" ? "text-income" : "text-expense"}`}>
+                      <span className={`text-[10px] sm:text-xs font-black uppercase tracking-widest ${t.type === "income" ? "text-income" : "text-expense"} whitespace-nowrap`}>
                         {t.type === "income" ? "Masuk" : "Keluar"}
                       </span>
                     </div>
                   </td>
-                  <td className="px-4 py-4 tabular-nums font-black text-sm">
-                     <span className={t.type === "income" ? "text-income" : "text-expense"}>
+                  <td className="px-3 sm:px-4 py-4 tabular-nums font-black text-sm whitespace-nowrap">
+                     <span className={t.type === "income" ? "text-green-600 dark:text-income" : "text-red-600 dark:text-expense"}>
                       {t.type === "income" ? "+" : "-"} {formatCurrency(Number(t.amount))}
                     </span>
                   </td>
-                  <td className="hidden sm:table-cell px-4 py-4">
+                  <td className="hidden sm:table-cell px-3 sm:px-4 py-4 whitespace-nowrap">
                     <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border border-slate-200/50 dark:border-slate-700/50">
                       {t.category}
                     </span>
                   </td>
-                  <td className="px-4 py-4">
-                     <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 italic max-w-[150px] truncate" title={t.note || ""}>
+                  <td className="px-3 sm:px-4 py-4">
+                     <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 italic max-w-[120px] sm:max-w-[150px] truncate" title={t.note || ""}>
                        {t.note || "—"}
                      </p>
                   </td>
-                  <td className="px-4 py-4 text-right">
+                  <td className="px-3 sm:px-4 py-4 text-right">
                     <div className="flex items-center justify-end gap-1">
                       {!t.id.startsWith("opt-") && (
                       <button
@@ -196,7 +196,7 @@ export function TransactionTable({ transactions, onDelete, onEdit }: Transaction
               type="button"
               onClick={() => setPage((p) => Math.max(1, p - 1))}
               disabled={safePage <= 1}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-white/80 dark:bg-slate-800/50 backdrop-blur-md border border-border dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-sm transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-30 disabled:scale-95 active:scale-95"
+              className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 disabled:opacity-30 hover:bg-primary/10 hover:text-primary transition-all"
               title="Halaman Sebelumnya"
               aria-label="Halaman Sebelumnya"
             >
@@ -208,7 +208,7 @@ export function TransactionTable({ transactions, onDelete, onEdit }: Transaction
               type="button"
               onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
               disabled={safePage >= totalPages}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl bg-white/80 dark:bg-slate-800/50 backdrop-blur-md border border-border dark:border-slate-700 text-slate-700 dark:text-slate-200 shadow-sm transition hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-30 disabled:scale-95 active:scale-95"
+              className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 disabled:opacity-30 hover:bg-primary/10 hover:text-primary transition-all"
               title="Halaman Selanjutnya"
               aria-label="Halaman Selanjutnya"
             >

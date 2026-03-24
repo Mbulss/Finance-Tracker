@@ -32,9 +32,9 @@ export function ConfirmModal({
   }
 
   return (
-    <div className="absolute inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 cursor-default">
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 cursor-default">
       <div
-        className="absolute inset-0 bg-slate-900/40 dark:bg-black/80 backdrop-blur-md animate-fade-in rounded-[2.5rem]"
+        className="absolute inset-0 bg-slate-900/60 dark:bg-black/90 backdrop-blur-md animate-fade-in"
         onClick={onClose}
         aria-hidden
       />

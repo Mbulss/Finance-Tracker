@@ -78,6 +78,9 @@ export function ChatBot({ onTransactionAdded }: { onTransactionAdded?: () => voi
   const [mobileViewport, setMobileViewport] = useState<{ height: number; top: number } | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const [isDrag, setIsDrag] = useState(false);
+  const startPos = useRef({ x: 0, y: 0, startX: 0, startY: 0 });
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -165,19 +168,78 @@ export function ChatBot({ onTransactionAdded }: { onTransactionAdded?: () => voi
     }
   }
 
+  const handlePointerDown = (e: React.PointerEvent) => {
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    startPos.current = { 
+      x: e.clientX, 
+      y: e.clientY, 
+      startX: pos.x, 
+      startY: pos.y 
+    };
+    setIsDrag(false);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (e.buttons === 0) return;
+    const dx = e.clientX - startPos.current.x;
+    const dy = e.clientY - startPos.current.y;
+    
+    if (Math.abs(dx) > 5 || Math.abs(dy) > 5) {
+      setIsDrag(true);
+      
+      const newX = startPos.current.startX + dx;
+      const newY = startPos.current.startY + dy;
+
+      // Boundary constraints
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      const R = 32; // Default right offset
+      const B = 32; // Default bottom offset
+      const S = 64; // Bubble size
+
+      // Max move left: -(W - S - R)
+      // Max move right: R
+      // Max move up: -(H - S - B)
+      // Max move down: B
+
+      const boundedX = Math.max(-(W - S - R), Math.min(R, newX));
+      const boundedY = Math.max(-(H - S - B), Math.min(B, newY));
+
+      setPos({ x: boundedX, y: boundedY });
+    }
+  };
+
+  const handlePointerUp = () => {
+    // Release capture happens automatically
+  };
+
   return (
     <>
       {/* Floating button */}
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onClick={() => {
+          if (!isDrag) setOpen((v) => !v);
+        }}
         className={`
-          fixed bottom-5 right-5 z-[100] flex h-16 w-16 items-center justify-center rounded-[2rem]
+          fixed z-[100] flex items-center justify-center rounded-[2rem]
           bg-gradient-to-tr from-primary to-sky-400 text-white shadow-2xl shadow-primary/40 
-          transition-all duration-500 hover:scale-110 hover:rotate-6 active:scale-95
-          sm:bottom-8 sm:right-8
-          ${open ? "bg-slate-900 dark:bg-slate-800 rotate-90 !rounded-full shadow-slate-500/20" : ""}
+          transition-all duration-300 hover:scale-110 active:scale-95
+          touch-none
+          ${open ? "bg-slate-900 dark:bg-slate-800 !rounded-full shadow-slate-500/20" : ""}
+          ${!isDrag ? "transition-[transform,border-radius,background-color,top,right,bottom,left,width,height]" : ""}
+          ${open ? "h-12 w-12 sm:h-16 sm:w-16" : "h-16 w-16"}
         `}
+        style={{
+          right: open ? "16px" : "min(32px, 5vw)",
+          bottom: open ? "auto" : "min(32px, 5vh)",
+          top: open ? "16px" : "auto",
+          transform: !open ? `translate(${pos.x}px, ${pos.y}px)` : "none",
+          cursor: isDrag ? "grabbing" : "grab"
+        }}
         aria-label={open ? "Tutup chatbot" : "Buka Cike AI"}
       >
         <div className="relative h-7 w-7">
@@ -207,11 +269,14 @@ export function ChatBot({ onTransactionAdded }: { onTransactionAdded?: () => voi
             sm:bottom-28 sm:right-8 sm:left-auto sm:top-auto sm:h-[600px] sm:w-[420px] 
             rounded-t-[2.5rem] sm:rounded-[2.5rem]
           `}
-          style={
-            mobileViewport
+          style={{
+            ...(mobileViewport
               ? { top: mobileViewport.top, height: mobileViewport.height, bottom: "auto" }
-              : undefined
-          }
+              : {}),
+            transform: typeof window !== "undefined" && window.innerWidth < 640 
+              ? "none" 
+              : `translate(${pos.x}px, ${pos.y}px)`,
+          }}
         >
           {/* Header */}
           <div className="relative flex items-center gap-4 border-b border-slate-100 dark:border-slate-800/80 bg-white/50 dark:bg-slate-900/50 px-6 py-5">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useToast } from "@/components/ToastContext";
 import { useRouter } from "next/navigation";
 import { TELEGRAM_BOT_URL } from "@/lib/constants";
@@ -39,6 +39,25 @@ export function LinkTelegram({ initialLinked = false }: LinkTelegramProps) {
       setDisconnecting(false);
     }
   }
+
+  useEffect(() => {
+    if (isLinked) return;
+    const timer = setInterval(async () => {
+      try {
+        const res = await fetch("/api/telegram/status");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.linked) {
+            setIsLinked(true);
+            setCode(null);
+            showToast("Telegram berhasil terhubung!", "success");
+            router.refresh(); // Update the server Component state if needed
+          }
+        }
+      } catch { /* ignore */ }
+    }, 3000);
+    return () => clearInterval(timer);
+  }, [isLinked, showToast, router]);
 
   async function handleGenerate() {
     setLoading(true);
@@ -302,16 +321,16 @@ export function LinkTelegram({ initialLinked = false }: LinkTelegramProps) {
         )}
       </div>
 
-      {/* --- TIPS SECTION --- (Gmail Style) */}
-      <section className="bg-white dark:bg-slate-900 rounded-[2.5rem] sm:rounded-[3.5rem] p-10 sm:p-14 border border-slate-200 dark:border-slate-800 animate-fade-in-up [animation-delay:600ms] transition-all group shadow-lg">
+      {/* --- TIPS SECTION --- (Compact Style) */}
+      <section className="bg-slate-50 dark:bg-slate-800/20 rounded-[2.5rem] p-6 border border-border/10 dark:border-slate-800/50 animate-fade-in-up [animation-delay:600ms] shadow-sm relative overflow-hidden group">
         <div className="flex flex-col md:flex-row items-center gap-10">
           <div className="h-20 w-20 sm:h-24 sm:w-24 shrink-0 flex items-center justify-center rounded-[2rem] bg-emerald-500 text-white shadow-xl shadow-emerald-500/20 animate-pulse-subtle group-hover:scale-110 transition-transform">
             <svg className="w-10 h-10 sm:w-12 sm:h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
           </div>
-          <div className="space-y-4 text-center md:text-left">
-            <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white">Tips Anti Ribet</h3>
-            <p className="text-base sm:text-lg font-medium text-slate-500 dark:text-slate-400 leading-relaxed max-w-4xl">
-              Biar makin pro, coba kirim format cepat: <span className="text-emerald-600 dark:text-emerald-400 font-bold px-3 py-1 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-emerald-100 dark:border-emerald-500/20 mx-1 whitespace-nowrap">+50rb gaji</span> atau <span className="text-red-500 font-bold px-3 py-1 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-red-100 dark:border-red-500/20 mx-1 whitespace-nowrap">-25k kopi</span>. Data bakal langsung sinkron!
+          <div className="space-y-1 text-center sm:text-left">
+            <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tighter">Tips Anti Ribet</h3>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed">
+              Biar makin pro, coba kirim format cepat: <span className="text-emerald-600 dark:text-emerald-400 font-bold px-2 py-0.5 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-emerald-100 dark:border-emerald-500/20 mx-1 whitespace-nowrap inline-block text-[11px] tracking-tight">+50rb gaji</span> atau <span className="text-red-500 font-bold px-2 py-0.5 bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-red-100 dark:border-red-500/20 mx-1 whitespace-nowrap inline-block text-[11px] tracking-tight">-25k kopi</span>. Langsung sinkron!
             </p>
           </div>
         </div>

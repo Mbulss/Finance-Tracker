@@ -9,6 +9,8 @@ interface SelectDropdownProps {
   options: { value: string; label: string }[];
   placeholder?: string;
   className?: string;
+  buttonClassName?: string;
+  hideAllOption?: boolean;
 }
 
 export function SelectDropdown({
@@ -17,6 +19,8 @@ export function SelectDropdown({
   options,
   placeholder = "Pilih...",
   className = "",
+  buttonClassName = "",
+  hideAllOption = false,
 }: SelectDropdownProps) {
   const [open, setOpen] = useState(false);
   const [position, setPosition] = useState({ top: 0, left: 0, width: 0 });
@@ -27,10 +31,21 @@ export function SelectDropdown({
   const updatePosition = () => {
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
+      const dropdownMinWidth = 200;
+      let left = rect.left + window.scrollX;
+      
+      // If it would overflow right side of viewport, align to right side of button
+      if (rect.left + dropdownMinWidth > window.innerWidth - 16) {
+        left = rect.right + window.scrollX - dropdownMinWidth;
+      }
+
+      // Ensure it doesn't overflow left side
+      left = Math.max(16, left);
+
       setPosition({
         top: rect.bottom + window.scrollY,
-        left: rect.left + window.scrollX,
-        width: rect.width,
+        left: left,
+        width: Math.max(rect.width, dropdownMinWidth),
       });
     }
   };
@@ -78,38 +93,44 @@ export function SelectDropdown({
       }}
       className="max-h-72 min-w-[200px] overflow-auto rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 py-2 shadow-2xl animate-fade-in-up"
     >
-      <button
-        type="button"
-        onClick={() => {
-          onChange("all");
-          setOpen(false);
-        }}
-        className={`flex w-full items-center px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest transition ${
-          value === "all" || !value
-            ? "bg-primary/10 text-primary"
-            : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 dark:text-slate-400"
-        }`}
-      >
-        {placeholder}
-      </button>
-      <div className="h-px bg-slate-100 dark:bg-slate-800 my-1 mx-2" />
-      {options.map((opt) => (
-        <button
-          key={opt.value}
-          type="button"
-          onClick={() => {
-            onChange(opt.value);
-            setOpen(false);
-          }}
-          className={`flex w-full items-center px-5 py-3 text-left text-xs font-bold transition ${
-            value === opt.value
-              ? "bg-primary/10 text-primary"
-              : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800"
-          }`}
-        >
-          {opt.label}
-        </button>
-      ))}
+      {!hideAllOption && (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              onChange("all");
+              setOpen(false);
+            }}
+            className={`flex w-full items-center px-5 py-3 text-left text-[10px] font-black uppercase tracking-widest transition ${
+              value === "all" || !value
+                ? "bg-primary/10 text-primary"
+                : "text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 dark:text-slate-400"
+            }`}
+          >
+            {placeholder}
+          </button>
+          <div className="h-px bg-slate-100 dark:bg-slate-800 my-1 mx-2" />
+        </>
+      )}
+      <div className="px-1.5 space-y-0.5">
+        {options.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => {
+              onChange(opt.value);
+              setOpen(false);
+            }}
+            className={`flex w-full items-center px-4 py-2.5 rounded-xl text-left text-xs font-bold transition ${
+              value === opt.value
+                ? "bg-primary/10 text-primary shadow-sm"
+                : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50"
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
     </div>
   );
 
@@ -119,7 +140,7 @@ export function SelectDropdown({
         ref={buttonRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-12 w-full min-w-[160px] items-center justify-between gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl px-5 text-sm font-bold text-slate-900 dark:text-white shadow-sm transition hover:bg-slate-50 dark:hover:bg-slate-700 focus:border-primary focus:ring-4 focus:ring-primary/10"
+        className={`flex h-12 w-full min-w-[160px] items-center justify-between gap-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl px-5 text-sm font-bold text-slate-900 dark:text-white shadow-sm transition hover:bg-slate-50 dark:hover:bg-slate-700 focus:border-primary focus:ring-4 focus:ring-primary/10 ${buttonClassName}`}
       >
         <span className="truncate">{selectedLabel}</span>
         <svg

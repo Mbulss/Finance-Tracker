@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { Transaction, TransactionType } from "@/lib/types";
 import { CATEGORIES } from "@/lib/types";
 import { formatAmountDisplay, parseAmountInput } from "@/lib/utils";
@@ -49,28 +50,32 @@ export function EditTransactionModal({ transaction, onClose, onSave }: EditTrans
     }
   }
 
-  return (
-    <div className="absolute inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
-      <div 
-        className="absolute inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-300 rounded-[2.5rem]" 
-        onClick={onClose} 
-        aria-hidden 
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 cursor-default">
+      <div
+        className="absolute inset-0 bg-slate-900/60 dark:bg-black/90 backdrop-blur-md animate-fade-in"
+        onClick={onClose}
+        aria-hidden
       />
       <div
-        className="relative w-full max-w-md rounded-[2.5rem] border border-border/50 dark:border-slate-700/50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl p-6 shadow-2xl animate-in fade-in zoom-in-95 slide-in-from-bottom-8 duration-500"
+        className="relative w-full max-w-lg overflow-hidden rounded-[2.5rem] border border-white/20 dark:border-slate-700/50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl p-6 shadow-2xl animate-scale-in"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
       >
-        <div className="mb-6 flex items-center justify-between">
+        {/* Glow effects */}
+        <div className="absolute -right-24 -top-24 h-48 w-48 rounded-full bg-primary/20 blur-[80px]" aria-hidden />
+        <div className="absolute -left-24 -bottom-24 h-48 w-48 rounded-full bg-primary/10 blur-[60px]" aria-hidden />
+
+        <div className="relative mb-6 flex items-center justify-between">
           <div>
             <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Edit Transaksi</h3>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mt-0.5">Sesuaikan catatan keuanganmu</p>
+            <p className="mt-0.5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Sesuaikan catatan keuanganmu</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="rounded-2xl p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-900 dark:hover:bg-slate-800 dark:hover:text-white transition-all active:scale-95"
+            className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100/50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-all shadow-soft"
             aria-label="Tutup"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -97,7 +102,7 @@ export function EditTransactionModal({ transaction, onClose, onSave }: EditTrans
             </button>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="flex flex-col sm:grid sm:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-4">Jumlah (Rp)</label>
               <input
@@ -157,4 +162,7 @@ export function EditTransactionModal({ transaction, onClose, onSave }: EditTrans
       </div>
     </div>
   );
+
+  if (typeof document === "undefined") return null;
+  return createPortal(modalContent, document.body);
 }

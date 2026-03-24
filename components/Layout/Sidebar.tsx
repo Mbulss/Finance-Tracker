@@ -134,7 +134,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
             </button>
 
             {/* Version Label */}
-            <div className="px-4 pb-2 pt-2 text-center sm:text-left">
+            <div className="px-4 pb-2 pt-3 text-left">
               <span className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-300 dark:text-slate-600">
                 Version 1.5.1
               </span>

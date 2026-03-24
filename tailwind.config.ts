@@ -46,6 +46,8 @@ const config: Config = {
         "pulse-subtle": "pulseSubtle 2s ease-in-out infinite",
         "typing": "typing 3.5s steps(40, end) forwards",
         "blink": "blink 0.7s step-end infinite",
+        "pulse-slow": "pulseSlow 8s ease-in-out infinite",
+        "shake": "shake 0.5s cubic-bezier(.36,.07,.19,.97) both",
       },
       keyframes: {
         fadeIn: {
@@ -91,6 +93,16 @@ const config: Config = {
         blink: {
           "from, to": { borderColor: "transparent" },
           "50%": { borderColor: "currentColor" },
+        },
+        "pulseSlow": {
+          "0%, 100%": { opacity: "0.2", transform: "scale(1)" },
+          "50%": { opacity: "0.5", transform: "scale(1.2)" },
+        },
+        "shake": {
+          "10%, 90%": { transform: "translate3d(-1px, 0, 0)" },
+          "20%, 80%": { transform: "translate3d(2px, 0, 0)" },
+          "30%, 50%, 70%": { transform: "translate3d(-4px, 0, 0)" },
+          "40%, 60%": { transform: "translate3d(4px, 0, 0)" },
         },
       },
     },

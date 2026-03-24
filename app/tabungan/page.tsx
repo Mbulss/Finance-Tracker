@@ -27,10 +27,12 @@ export default async function TabunganPage() {
   return (
     <DashboardLayout>
       <div className="mx-auto max-w-6xl space-y-6">
-        <header>
-          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 sm:text-3xl">Tabungan</h1>
-          <p className="mt-1 text-sm text-muted dark:text-slate-400">
-            Uang dingin — setor dan tarik kapan saja. Pencatatan terpisah dari pemasukan/pengeluaran harian.
+        <header className="mb-2">
+          <h1 className="text-4xl lg:text-5xl font-black tracking-tighter text-slate-900 dark:text-white uppercase transform-gpu">
+            Tabungan <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-sky-400 will-change-transform">Masa Depan</span>
+          </h1>
+          <p className="mt-1 text-xs sm:text-sm font-black text-slate-500 dark:text-slate-400 uppercase tracking-[0.2em] transform-gpu">
+            Uang dingin — setor dan tarik kapan saja. Pencatatan terpisah dari arus kas harian.
           </p>
         </header>
         <TabunganContent userId={user.id} initialTelegramLinked={isTelegramLinked} />

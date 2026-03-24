@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useState, useEffect, useOptimistic, useTransition, useMemo, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import type { Transaction } from "@/lib/types";
 import { getMonthKey } from "@/lib/utils";
@@ -177,7 +178,8 @@ export function Dashboard({ userId }: DashboardProps) {
     hour < 12 ? "Selamat pagi" : hour < 18 ? "Selamat siang" : "Selamat malam";
 
   return (
-    <div className="relative mx-auto max-w-6xl space-y-10 pb-20">
+    <>
+      <div className="relative mx-auto max-w-6xl space-y-10 pb-20">
       {/* Decorative Background Elements - Optimized for scroll performance */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden -z-10 bg-transparent transform-gpu" aria-hidden>
         <div className="absolute -top-[10%] -right-[10%] w-[40%] h-[40%] bg-primary/10 dark:bg-primary/5 rounded-full blur-[80px] animate-pulse transform-gpu" />
@@ -354,41 +356,51 @@ export function Dashboard({ userId }: DashboardProps) {
           onEdit={handleEdit}
         />
 
-        {/* Import Modal */}
-        {showImport && (
-          <div className="absolute inset-0 z-[110] flex items-center justify-center p-4">
-            <div
-              className="absolute inset-0 bg-slate-900/40 dark:bg-black/80 backdrop-blur-xl animate-in fade-in duration-300 rounded-[2.5rem]"
-              onClick={() => setShowImport(false)}
-              aria-hidden
-            />
-            <div
-              className="relative w-full max-w-lg overflow-hidden rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl p-6 shadow-2xl animate-in fade-in zoom-in-95 duration-200"
-              onClick={(e) => e.stopPropagation()}
-              role="dialog"
-              aria-modal="true"
-            >
-               <div className="flex items-center justify-between mb-6">
-                  <div>
-                     <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Impor Data</h3>
-                     <p className="text-[10px] font-black uppercase tracking-widest text-primary/70 mt-1">Upload file CSV hasil export kamu</p>
-                  </div>
-                  <button onClick={() => setShowImport(false)} className="p-3 rounded-2xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors text-slate-400">
-                     <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-               </div>
-               <ImportCSV
-                  userId={userId}
-                  onSuccess={() => {
-                     setShowImport(false);
-                     fetchTransactions();
-                  }}
-               />
-            </div>
-          </div>
-        )}
       </section>
 
-    </div>
+      </div>
+
+      {/* Global Import Modal */}
+      {showImport && typeof document !== "undefined" && createPortal(
+        <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 sm:p-6 cursor-default">
+          <div
+            className="absolute inset-0 bg-slate-900/60 dark:bg-black/90 backdrop-blur-md animate-fade-in"
+            onClick={() => setShowImport(false)}
+            aria-hidden
+          />
+          <div
+            className="relative w-full max-w-lg overflow-hidden rounded-[2.5rem] border border-white/20 dark:border-slate-700/50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl p-6 sm:p-8 shadow-2xl animate-scale-in"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+          >
+             {/* Glow effects */}
+             <div className="absolute -right-24 -top-24 h-48 w-48 rounded-full bg-primary/20 blur-[80px]" aria-hidden />
+             <div className="absolute -left-24 -bottom-24 h-48 w-48 rounded-full bg-primary/10 blur-[60px]" aria-hidden />
+
+             <div className="relative flex items-center justify-between mb-8">
+                <div>
+                   <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Impor Data</h3>
+                   <p className="mt-0.5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Upload file CSV hasil export kamu</p>
+                </div>
+                <button 
+                  onClick={() => setShowImport(false)} 
+                   className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100/50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-all shadow-soft"
+                >
+                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+             </div>
+             <ImportCSV
+                userId={userId}
+                onSuccess={() => {
+                   setShowImport(false);
+                   fetchTransactions();
+                }}
+             />
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
   );
 }

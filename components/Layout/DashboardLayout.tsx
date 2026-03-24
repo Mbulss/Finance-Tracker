@@ -17,7 +17,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
     <div className="min-h-screen bg-mesh">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <main className="min-h-screen lg:pl-64 focus:outline-none">
-        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border dark:border-slate-700 bg-card/80 dark:bg-slate-800/80 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur-md sm:px-6 lg:hidden transform-gpu">
+        <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border dark:border-slate-700 bg-card/80 dark:bg-slate-800/80 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur-md sm:px-6 lg:hidden">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}

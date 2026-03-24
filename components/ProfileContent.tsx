@@ -135,7 +135,10 @@ export function ProfileContent({ email, isGoogleUser = false }: ProfileContentPr
             <div className="space-y-6">
                <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-slate-50 dark:bg-slate-800/50 text-slate-500 dark:text-slate-400 text-[10px] sm:text-xs font-black uppercase tracking-[0.25em] border border-slate-200 dark:border-slate-700 mx-auto lg:mx-0 shadow-sm">
                   <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
-                  Keamanan & Profil 🔒
+                  Keamanan & Profil
+                  <svg className="w-3.5 h-3.5 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                  </svg>
                </div>
                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black text-slate-900 dark:text-white tracking-tighter leading-tight">
                  Akun Kamu.
@@ -149,7 +152,11 @@ export function ProfileContent({ email, isGoogleUser = false }: ProfileContentPr
           <div className="shrink-0 relative group animate-float mx-auto lg:mx-0">
              <div className="absolute inset-0 bg-primary/20 rounded-full blur-[60px] group-hover:scale-110 transition-transform duration-700" />
              <div className="relative bg-white dark:bg-slate-800 p-8 sm:p-12 rounded-[3.5rem] shadow-2xl ring-2 ring-slate-100 dark:ring-slate-800">
-                <div className="text-5xl sm:text-7xl">👤</div>
+                <div className="text-slate-200 dark:text-slate-700">
+                  <svg className="w-16 h-16 sm:w-24 sm:h-24" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
                 <div className="absolute -bottom-2 -right-2 bg-primary text-white p-3 rounded-2xl shadow-lg">
                    <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
                 </div>
@@ -166,7 +173,11 @@ export function ProfileContent({ email, isGoogleUser = false }: ProfileContentPr
           <div className="relative flex flex-col gap-10 h-full">
             <div className="space-y-8 flex-1">
               <div className="flex items-center gap-5">
-                <span className="flex h-16 w-16 items-center justify-center rounded-[1.75rem] bg-slate-50 dark:bg-slate-800 text-3xl shadow-sm ring-1 ring-slate-100 dark:ring-slate-700/50 group-hover:rotate-12 transition-transform">📧</span>
+                <span className="flex h-16 w-16 items-center justify-center rounded-[1.75rem] bg-slate-50 dark:bg-slate-800 text-slate-400 shadow-sm ring-1 ring-slate-100 dark:ring-slate-700/50 group-hover:rotate-12 transition-transform">
+                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </span>
                 <div className="space-y-1">
                   <h2 className="text-2xl font-black text-slate-900 dark:text-white leading-none">Info Akun</h2>
                   <p className="text-[10px] sm:text-xs font-black text-slate-400 dark:text-slate-500 uppercase tracking-[0.25em] mt-2">Personal Identity</p>
@@ -180,7 +191,9 @@ export function ProfileContent({ email, isGoogleUser = false }: ProfileContentPr
                 </div>
 
                 <div className="flex items-center gap-4 p-5 rounded-[2rem] bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-                  <span className="text-xl">🛡️</span>
+                  <svg className="w-6 h-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
                   <div className="space-y-0.5">
                     <p className="text-xs font-black uppercase tracking-widest">Status Keamanan</p>
                     <p className="text-sm font-bold">Terproteksi SSL & AES-256</p>
@@ -202,7 +215,11 @@ export function ProfileContent({ email, isGoogleUser = false }: ProfileContentPr
           <div className="relative flex flex-col gap-10 h-full">
             <div className="space-y-8 flex-1">
               <div className="flex items-center gap-5">
-                <span className="flex h-16 w-16 items-center justify-center rounded-[1.75rem] bg-primary/10 text-primary text-3xl shadow-sm ring-1 ring-primary/10 group-hover:rotate-12 transition-transform">🔑</span>
+                <span className="flex h-16 w-16 items-center justify-center rounded-[1.75rem] bg-primary/10 text-primary shadow-sm ring-1 ring-primary/10 group-hover:rotate-12 transition-transform">
+                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                  </svg>
+                </span>
                 <div className="space-y-1">
                   <h2 className="text-2xl font-black text-slate-900 dark:text-white leading-none">
                     {isGoogleUser ? "Buat Password" : "Ubah Password"}
@@ -223,7 +240,13 @@ export function ProfileContent({ email, isGoogleUser = false }: ProfileContentPr
                     ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400" 
                     : "bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400"
                 }`}>
-                  <span className="text-lg">{message.type === "success" ? "✅" : "❌"}</span>
+                  <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    {message.type === "success" ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    )}
+                  </svg>
                   <p className="text-sm font-black">{message.text}</p>
                 </div>
               )}
@@ -242,7 +265,11 @@ export function ProfileContent({ email, isGoogleUser = false }: ProfileContentPr
                         disabled={loading}
                       />
                       <button type="button" onClick={() => setShowOldPassword(!showOldPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors">
-                        {showOldPassword ? "🫣" : "👁️"}
+                        {showOldPassword ? (
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.046m2.458-2.547A9.954 9.954 0 0112 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        ) : (
+                          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 12-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                        )}
                       </button>
                     </div>
                   </div>
@@ -260,7 +287,11 @@ export function ProfileContent({ email, isGoogleUser = false }: ProfileContentPr
                       disabled={loading}
                     />
                     <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors">
-                      {showPassword ? "🫣" : "👁️"}
+                      {showPassword ? (
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.046m2.458-2.547A9.954 9.954 0 0112 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 12-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -277,7 +308,11 @@ export function ProfileContent({ email, isGoogleUser = false }: ProfileContentPr
                       disabled={loading}
                     />
                     <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary transition-colors">
-                      {showConfirmPassword ? "🫣" : "👁️"}
+                      {showConfirmPassword ? (
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.046m2.458-2.547A9.954 9.954 0 0112 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                      ) : (
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 12-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                      )}
                     </button>
                   </div>
                 </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency, formatDate, formatShortDate, parseAmountInput, formatAmountDisplay } from "@/lib/utils";
 import { useToast } from "@/components/ToastContext";
@@ -269,13 +270,22 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
       )
       .subscribe();
 
+    // Polling fallback every 3s if not linked, because RLS might block postgres_changes
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    if (!isTelegramLinked) {
+      pollTimer = setInterval(() => {
+        fetchProfile();
+      }, 3000);
+    }
+
     return () => {
       cancelled = true;
       supabase.removeChannel(channel);
       supabase.removeChannel(channelPots);
       supabase.removeChannel(channelProfile);
+      if (pollTimer) clearInterval(pollTimer);
     };
-  }, [fetchEntries, fetchPots, fetchReminder, fetchProfile, supabase, userId]);
+  }, [fetchEntries, fetchPots, fetchReminder, fetchProfile, supabase, userId, isTelegramLinked]);
 
   useEffect(() => {
     if (pots.length > 0 && !transferTo) setTransferTo(pots[0].id);
@@ -760,10 +770,10 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
         </div>
 
         {/* Modal Tambah / Edit celengan */}
-        {(addingPot || editingPot) && (
-          <div className="absolute inset-0 z-[110] flex items-center justify-center p-4">
+        {(addingPot || editingPot) && typeof document !== "undefined" && createPortal(
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center p-4 sm:p-6 cursor-default">
             <div
-              className="absolute inset-0 bg-slate-900/40 dark:bg-black/80 backdrop-blur-xl animate-in fade-in duration-300 rounded-[2.5rem]"
+              className="absolute inset-0 bg-slate-900/60 dark:bg-black/90 backdrop-blur-md animate-fade-in"
               onClick={() => {
                 if (addingPot) {
                   setAddingPot(false);
@@ -776,56 +786,55 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
               aria-hidden
             />
             <div
-              className="relative w-full max-w-md bg-white/95 dark:bg-slate-900/95 border border-border/50 dark:border-slate-800 rounded-[2.5rem] shadow-2xl p-6 overflow-hidden animate-in zoom-in-95 fade-in duration-200"
+              className="relative w-full max-w-lg max-h-[95vh] flex flex-col bg-white/95 dark:bg-slate-900/95 border border-white/20 dark:border-slate-800 rounded-[2.5rem] shadow-2xl overflow-hidden animate-scale-in"
               onClick={(e) => e.stopPropagation()}
               role="dialog"
               aria-modal="true"
             >
-              {/* Decorative Blobs */}
-              <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-[80px] pointer-events-none" />
-              <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-500/5 rounded-full blur-[80px] pointer-events-none" />
+              <div className="absolute -top-24 -right-24 w-64 h-64 bg-primary/10 rounded-full blur-[80px] pointer-events-none" aria-hidden />
+              <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-emerald-500/5 rounded-full blur-[80px] pointer-events-none" aria-hidden />
 
-              <div className="relative z-10 space-y-6">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-tight">
-                      {addingPot ? "Tambah Celengan" : "Edit"}
-                    </h3>
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Atur target keuangan barumu</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (addingPot) {
-                        setAddingPot(false);
-                        setNewPotName("");
-                        setNewPotTarget("");
-                        setNewPotPhoto(null);
-                        setNewPotDescription("");
-                      } else setEditingPot(null);
-                    }}
-                    className="p-3 rounded-2xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-                  >
-                    <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
+              <div className="relative z-10 flex items-center justify-between p-6 sm:p-8 pb-4">
+                <div className="space-y-0.5">
+                  <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tighter uppercase leading-tight">
+                    {addingPot ? "Tambah Celengan" : "Edit"}
+                  </h3>
+                  <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-[0.15em]">Atur target keuangan barumu</p>
                 </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (addingPot) {
+                      setAddingPot(false);
+                      setNewPotName("");
+                      setNewPotTarget("");
+                      setNewPotPhoto(null);
+                      setNewPotDescription("");
+                    } else setEditingPot(null);
+                  }}
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100/50 dark:bg-slate-800/50 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-700 hover:text-slate-900 dark:hover:text-white transition-all shadow-sm"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+                </button>
+              </div>
 
-                <div className="space-y-6">
-                  <div className="space-y-2">
+              <div className="relative z-10 flex-1 overflow-y-auto px-6 sm:px-8 pb-4 custom-scrollbar">
+                <div className="space-y-5">
+                  <div className="space-y-1.5">
                     <label className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 ml-1">Nama Celengan</label>
                     <input
                       type="text"
                       value={addingPot ? newPotName : editPotName}
                       onChange={(e) => addingPot ? setNewPotName(e.target.value) : setEditPotName(e.target.value)}
                       placeholder="Mis. Dana Darurat"
-                      className="w-full h-14 rounded-2xl border-2 border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 px-5 text-slate-900 dark:text-white font-bold placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                      className="w-full h-12 sm:h-14 rounded-2xl border-2 border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 px-5 text-slate-900 dark:text-white font-bold placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all outline-none text-sm"
                     />
                   </div>
 
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <label className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 ml-1">Target Menabung (Rp)</label>
                     <div className="relative">
-                      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-lg font-black text-slate-400">Rp</span>
+                      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-base sm:text-lg font-black text-slate-400">Rp</span>
                       <input
                         type="text"
                         inputMode="numeric"
@@ -835,16 +844,16 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
                           addingPot ? setNewPotTarget(v) : setEditPotTarget(v);
                         }}
                         placeholder="0"
-                        className="w-full h-16 pl-14 pr-5 rounded-2xl border-2 border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 text-2xl font-black tabular-nums text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                        className="w-full h-14 sm:h-16 pl-14 pr-5 rounded-2xl border-2 border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 text-xl sm:text-2xl font-black tabular-nums text-slate-900 dark:text-white placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all outline-none"
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="space-y-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                    <div className="space-y-1.5">
                        <label className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 ml-1">Foto Celengan</label>
                        <div className="flex items-center gap-4">
-                        <label className="relative group cursor-pointer">
+                        <label className="relative group cursor-pointer shrink-0">
                           <input
                             type="file"
                             accept="image/*"
@@ -858,11 +867,11 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
                             }}
                             className="sr-only"
                           />
-                          <div className="h-16 w-16 rounded-2xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary transition-all group-hover:bg-primary/5">
+                          <div className="h-16 w-16 rounded-2xl bg-slate-100 dark:bg-slate-800 border-2 border-dashed border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-primary hover:border-primary transition-all group-hover:bg-primary/5 shadow-inner">
                             {(addingPot ? newPotPhoto : editPotPhoto) ? (
                                <img src={addingPot ? newPotPhoto! : editPotPhoto!} alt="" className="h-full w-full object-cover rounded-[14px]" />
                             ) : (
-                               <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" /></svg>
+                               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" /></svg>
                             )}
                           </div>
                           {(addingPot ? newPotPhoto : editPotPhoto) && (
@@ -879,92 +888,94 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
                        </div>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-1.5">
                       <label className="text-[11px] font-black uppercase tracking-[0.15em] text-slate-400 dark:text-slate-500 ml-1">Deskripsi</label>
                       <textarea
                         value={addingPot ? newPotDescription : editPotDescription}
                         onChange={(e) => addingPot ? setNewPotDescription(e.target.value) : setEditPotDescription(e.target.value)}
                         placeholder="Catatan..."
                         rows={1}
-                        className="w-full h-16 rounded-2xl border-2 border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 px-5 pt-4 text-slate-900 dark:text-white font-bold placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all outline-none resize-none"
+                        className="w-full h-16 rounded-2xl border-2 border-slate-50 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 px-5 pt-4 text-slate-900 dark:text-white font-bold placeholder:text-slate-300 dark:placeholder:text-slate-600 focus:border-primary/50 focus:ring-4 focus:ring-primary/10 transition-all outline-none resize-none text-sm"
                       />
                     </div>
                   </div>
-                  <div className="flex gap-3 mt-4">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (addingPot) {
-                          setAddingPot(false);
-                          setNewPotName("");
-                          setNewPotTarget("");
-                          setNewPotPhoto(null);
-                          setNewPotDescription("");
-                        } else setEditingPot(null);
-                      }}
-                      className="flex-1 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 border-2 border-transparent text-slate-500 dark:text-slate-400 text-[10px] font-black tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all uppercase"
-                    >
-                      Batal
-                    </button>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const name = addingPot ? newPotName.trim() : editPotName.trim();
-                        const targetStr = addingPot ? newPotTarget : editPotTarget;
-                        const targetNum = parseAmountInput(targetStr);
-                        if (!name) {
-                          showToast("Isi nama celengan", "error");
-                          return;
-                        }
-                        if (!targetNum || targetNum <= 0) {
-                          showToast("Isi target (Rp) dengan nominal lebih dari 0", "error");
-                          return;
-                        }
-                        if (addingPot) {
-                          const { error: err } = await supabase.from("savings_pots").insert({
-                            user_id: userId,
-                            name,
-                            target_amount: targetNum,
-                            sort_order: pots.length,
-                            photo: newPotPhoto || null,
-                            description: newPotDescription.trim() || null,
-                          });
-                          if (!err) {
-                            setNewPotName("");
-                            setNewPotTarget("");
-                            setNewPotPhoto(null);
-                            setNewPotDescription("");
-                            setAddingPot(false);
-                            showToast("Celengan ditambah");
-                            fetchPots();
-                          } else showToast(err.message, "error");
-                        } else if (editingPot) {
-                          const { error: err } = await supabase
-                            .from("savings_pots")
-                            .update({
-                              name,
-                              target_amount: targetNum,
-                              photo: editPotPhoto || null,
-                              description: editPotDescription.trim() || null,
-                            })
-                            .eq("id", editingPot.id)
-                            .eq("user_id", userId);
-                          if (!err) {
-                            setEditingPot(null);
-                            showToast("Celengan diperbarui");
-                            fetchPots();
-                          } else showToast(err.message, "error");
-                        }
-                      }}
-                      className="flex-1 h-12 rounded-2xl bg-primary text-white font-black tracking-[0.2em] shadow-lg shadow-primary/25 hover:scale-[1.02] active:scale-95 transition-all text-[10px] uppercase"
-                    >
-                      Simpan
-                    </button>
-                  </div>
                 </div>
               </div>
+
+              <div className="relative z-10 p-6 sm:p-8 pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (addingPot) {
+                      setAddingPot(false);
+                      setNewPotName("");
+                      setNewPotTarget("");
+                      setNewPotPhoto(null);
+                      setNewPotDescription("");
+                    } else setEditingPot(null);
+                  }}
+                  className="flex-1 h-12 rounded-2xl bg-slate-100 dark:bg-slate-800 border border-transparent text-slate-500 dark:text-slate-400 text-[10px] font-black tracking-widest hover:bg-slate-200 dark:hover:bg-slate-700 transition-all uppercase"
+                >
+                  Batal
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const name = addingPot ? newPotName.trim() : editPotName.trim();
+                    const targetStr = addingPot ? newPotTarget : editPotTarget;
+                    const targetNum = parseAmountInput(targetStr);
+                    if (!name) {
+                      showToast("Isi nama celengan", "error");
+                      return;
+                    }
+                    if (!targetNum || targetNum <= 0) {
+                      showToast("Isi target (Rp) dengan nominal lebih dari 0", "error");
+                      return;
+                    }
+                    if (addingPot) {
+                      const { error: err } = await supabase.from("savings_pots").insert({
+                        user_id: userId,
+                        name,
+                        target_amount: targetNum,
+                        sort_order: pots.length,
+                        photo: newPotPhoto || null,
+                        description: newPotDescription.trim() || null,
+                      });
+                      if (!err) {
+                        setNewPotName("");
+                        setNewPotTarget("");
+                        setNewPotPhoto(null);
+                        setNewPotDescription("");
+                        setAddingPot(false);
+                        showToast("Celengan ditambah");
+                        fetchPots();
+                      } else showToast(err.message, "error");
+                    } else if (editingPot) {
+                      const { error: err } = await supabase
+                        .from("savings_pots")
+                        .update({
+                          name,
+                          target_amount: targetNum,
+                          photo: editPotPhoto || null,
+                          description: editPotDescription.trim() || null,
+                        })
+                        .eq("id", editingPot.id)
+                        .eq("user_id", userId);
+                      if (!err) {
+                        setEditingPot(null);
+                        showToast("Celengan diperbarui");
+                        fetchPots();
+                      } else showToast(err.message, "error");
+                    }
+                  }}
+                  className="flex-1 h-12 rounded-2xl bg-primary text-white font-black tracking-[0.2em] shadow-lg shadow-primary/25 hover:scale-[1.02] active:scale-95 transition-all text-[10px] uppercase"
+                >
+                  Simpan
+                </button>
+              </div>
             </div>
-          </div>
+          </div>,
+          document.body
         )}
 
         <ConfirmModal
@@ -1248,8 +1259,8 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
                    </a>
                 </div>
               ) : (
-                <div className="flex flex-col sm:flex-row items-center gap-4 p-2 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-border/20">
-                  <label className="relative inline-flex items-center cursor-pointer group/toggle px-3 py-2 rounded-xl hover:bg-white dark:hover:bg-slate-800 transition-all">
+                <div className="w-full lg:w-auto flex flex-col lg:flex-row items-stretch lg:items-center gap-2 lg:gap-0 p-1.5 lg:p-2 rounded-[2rem] lg:rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-border/20">
+                  <label className="flex-1 lg:flex-none relative inline-flex items-center justify-between lg:justify-start cursor-pointer group/toggle px-4 lg:px-5 py-3 lg:py-2.5 rounded-2xl lg:rounded-xl hover:bg-white dark:hover:bg-slate-800 transition-all">
                     <input
                       type="checkbox"
                       checked={reminder.enabled}
@@ -1261,13 +1272,13 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
                       }}
                       className="sr-only peer"
                     />
-                    <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 dark:peer-focus:ring-primary/10 rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[10px] after:left-[14px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary" />
-                    <span className="ml-3 text-xs font-bold uppercase tracking-widest text-slate-600 dark:text-slate-300">Aktif</span>
+                    <div className="relative w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary" />
+                    <span className="ml-4 text-[10px] lg:text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 group-hover:text-primary transition-colors whitespace-nowrap">Pengingat {reminder.enabled ? "Aktif" : "Mati"}</span>
                   </label>
 
                   {reminder.enabled && (
-                    <div className="flex items-center gap-2 border-l border-border/30 dark:border-slate-700 pl-4 py-1">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Setiap</span>
+                    <div className="flex-1 lg:flex-none flex items-center justify-between lg:justify-start gap-4 border-t lg:border-t-0 lg:border-l border-border/20 dark:border-slate-700 mt-1 lg:mt-0 pt-3 lg:pt-0 pb-1.5 lg:pb-0 px-4 lg:pl-8 lg:pr-4">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap">Setiap Hari</span>
                       <SelectDropdown
                         value={String(reminder.day_of_week)}
                         onChange={(v) => {
@@ -1277,7 +1288,8 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
                         }}
                         options={DAY_NAMES.map((name, i) => ({ value: String(i), label: name.toUpperCase() }))}
                         placeholder="Hari"
-                        className="h-10 min-w-[120px]"
+                        buttonClassName="!border-none !bg-transparent !shadow-none hover:!bg-slate-200/50 dark:hover:!bg-slate-800/50 !min-w-[120px] !h-10"
+                        hideAllOption={true}
                       />
                     </div>
                   )}
@@ -1338,35 +1350,35 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
                       <tbody className="divide-y divide-border/20 dark:divide-slate-700/50">
                         {paginatedEntries.map((entry) => (
                           <tr key={entry.id} className="group transition-all hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                            <td className="px-4 py-4 font-bold text-[10px] text-slate-400 uppercase tracking-tighter whitespace-nowrap">
+                            <td className="px-3 sm:px-4 py-4 font-bold text-[10px] text-slate-400 uppercase tracking-tighter whitespace-nowrap">
                               {formatShortDate(entry.created_at)}
                             </td>
-                            <td className="px-4 py-4">
-                              <div className="flex items-center gap-2">
-                                <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg font-bold text-xs ${entry.type === "deposit" ? "bg-income/10 text-income" : "bg-expense/10 text-expense"}`}>
+                            <td className="px-3 sm:px-4 py-4">
+                              <div className="flex items-center gap-1.5 sm:gap-2">
+                                <div className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg font-bold text-[10px] sm:text-xs ${entry.type === "deposit" ? "bg-income/10 text-income" : "bg-expense/10 text-expense"}`}>
                                   {entry.type === "deposit" ? "↓" : "↑"}
                                 </div>
-                                <span className={`text-xs font-black uppercase tracking-widest ${entry.type === "deposit" ? "text-income" : "text-expense"}`}>
+                                <span className={`text-[10px] sm:text-xs font-black uppercase tracking-widest ${entry.type === "deposit" ? "text-income" : "text-expense"} whitespace-nowrap`}>
                                   {entry.type === "deposit" ? "Setor" : "Tarik"}
                                 </span>
                               </div>
                             </td>
-                            <td className="px-4 py-4 tabular-nums font-black text-sm">
-                              <span className={entry.type === "deposit" ? "text-income" : "text-expense"}>
+                            <td className="px-3 sm:px-4 py-4 tabular-nums font-black text-sm whitespace-nowrap">
+                              <span className={entry.type === "deposit" ? "text-green-600 dark:text-income" : "text-red-600 dark:text-expense"}>
                                 {entry.type === "deposit" ? "+" : "-"} {formatCurrency(Number(entry.amount))}
                               </span>
                             </td>
-                            <td className="px-4 py-4 hidden md:table-cell">
-                              <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border border-slate-200/50 dark:border-slate-700/50">
+                            <td className="px-3 sm:px-4 py-4 hidden md:table-cell">
+                              <span className="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest border border-slate-200/50 dark:border-slate-700/50 whitespace-nowrap">
                                 {getPotLabel(entry.pot_id ?? null)}
                               </span>
                             </td>
-                            <td className="px-4 py-4 hidden lg:table-cell">
+                            <td className="px-3 sm:px-4 py-4 hidden lg:table-cell">
                                 <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 italic max-w-[150px] truncate" title={entry.note || ""}>
                                   {entry.note || "—"}
                                 </p>
                             </td>
-                            <td className="px-4 py-4 text-right">
+                            <td className="px-3 sm:px-4 py-4 text-right">
                               <div className="flex items-center justify-end gap-1">
                                 <button
                                   onClick={() => setEditingEntry(entry)}

@@ -2,6 +2,7 @@
 
 import type { Transaction } from "@/lib/types";
 import { formatCurrency } from "@/lib/utils";
+import { createPortal } from "react-dom";
 
 interface DeleteConfirmModalProps {
   transaction: Transaction | null;
@@ -27,14 +28,20 @@ export function DeleteConfirmModal({
       ? `+${formatCurrency(Number(transaction.amount))}`
       : `-${formatCurrency(Number(transaction.amount))}`;
 
-  return (
-    <div className="absolute inset-0 z-[100] flex items-center justify-center p-4 sm:p-6">
+  const modalContent = (
+    <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 cursor-default">
       <div
-        className="absolute inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-300 rounded-[2.5rem]"
+        className="absolute inset-0 bg-slate-900/60 dark:bg-black/90 backdrop-blur-md animate-fade-in"
         onClick={onClose}
         aria-hidden
       />
-      <div className="relative w-full max-w-md rounded-[2.5rem] border border-border/50 dark:border-slate-700/50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl p-6 shadow-2xl animate-in fade-in zoom-in-95 slide-in-from-bottom-8 duration-500">
+      <div
+        className="relative w-full max-w-md overflow-hidden rounded-[2.5rem] border border-white/20 dark:border-slate-700/50 bg-white/95 dark:bg-slate-900/95 backdrop-blur-2xl p-6 shadow-2xl animate-scale-in"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Glow effects */}
+        <div className="absolute -right-24 -top-24 h-48 w-48 rounded-full bg-rose-500/10 blur-[80px]" aria-hidden />
+        <div className="absolute -left-24 -bottom-24 h-48 w-48 rounded-full bg-rose-500/5 blur-[60px]" aria-hidden />
         <div className="mb-4 flex flex-col items-center text-center">
           <div className="mb-3 flex h-16 w-16 items-center justify-center rounded-[2rem] bg-rose-500/10 text-rose-500 ring-4 ring-rose-500/5">
             <svg className="h-8 w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -76,4 +83,7 @@ export function DeleteConfirmModal({
       </div>
     </div>
   );
+
+  if (typeof document === "undefined") return null;
+  return createPortal(modalContent, document.body);
 }
