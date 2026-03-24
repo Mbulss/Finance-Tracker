@@ -170,8 +170,8 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
     .filter((e) => !pendingDeleteIds.has(e.id))
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
-  /** Entri yang tampil di tabel riwayat: setor/tarik saja, tanpa entri pindah uang */
-  const entriesForRiwayat = displayedEntries.filter((e) => !e.is_transfer);
+  /** Entri yang tampil di tabel riwayat: Semua entri termasuk setor/tarik dan pindah uang */
+  const entriesForRiwayat = displayedEntries;
 
   const totalRiwayatPages = Math.max(1, Math.ceil(entriesForRiwayat.length / RIWAYAT_PAGE_SIZE));
   useEffect(() => {
@@ -1355,11 +1355,17 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
                             </td>
                             <td className="px-3 sm:px-4 py-4">
                               <div className="flex items-center gap-1.5 sm:gap-2">
-                                <div className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg font-bold text-[10px] sm:text-xs ${entry.type === "deposit" ? "bg-income/10 text-income" : "bg-expense/10 text-expense"}`}>
-                                  {entry.type === "deposit" ? "↓" : "↑"}
+                                <div className={`flex h-7 w-7 sm:h-8 sm:w-8 shrink-0 items-center justify-center rounded-lg font-bold text-[10px] sm:text-xs ${
+                                  entry.is_transfer ? "bg-primary/10 text-primary" : 
+                                  entry.type === "deposit" ? "bg-income/10 text-income" : "bg-expense/10 text-expense"
+                                }`}>
+                                  {entry.is_transfer ? "⇄" : entry.type === "deposit" ? "↓" : "↑"}
                                 </div>
-                                <span className={`text-[10px] sm:text-xs font-black uppercase tracking-widest ${entry.type === "deposit" ? "text-income" : "text-expense"} whitespace-nowrap`}>
-                                  {entry.type === "deposit" ? "Setor" : "Tarik"}
+                                <span className={`text-[10px] sm:text-xs font-black uppercase tracking-widest ${
+                                  entry.is_transfer ? "text-primary" :
+                                  entry.type === "deposit" ? "text-income" : "text-expense"
+                                } whitespace-nowrap`}>
+                                  {entry.is_transfer ? "Pindah" : entry.type === "deposit" ? "Setor" : "Tarik"}
                                 </span>
                               </div>
                             </td>
