@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ChatBot } from "@/components/ChatBot";
@@ -12,6 +12,26 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  // Register Service Worker and Catch Install Prompt early
+  useEffect(() => {
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker
+        .register("/ServiceWorker.js")
+        .then((reg) => console.log("Service Worker registered!", reg.scope))
+        .catch((err) => console.log("Service Worker registration failed:", err));
+    }
+
+    const handler = (e: any) => {
+      e.preventDefault();
+      // Store globally for components to pick up
+      (window as any).deferredPrompt = e;
+      window.dispatchEvent(new Event("pwa-prompt-available"));
+      console.log("Install prompt caught early (Global)!");
+    };
+    window.addEventListener("beforeinstallprompt", handler);
+    return () => window.removeEventListener("beforeinstallprompt", handler);
+  }, []);
 
   return (
     <div className="min-h-screen bg-mesh">

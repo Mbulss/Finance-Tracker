@@ -104,12 +104,3 @@ body {
     @apply bg-slate-300 dark:bg-slate-600 rounded-full;
   }
 }
-
-@keyframes border-glow {
-  0%, 100% { opacity: 0.2; transform: scale(1); }
-  50% { opacity: 0.5; transform: scale(1.05); }
-}
-
-.animate-border-glow {
-  animation: border-glow 4s ease-in-out infinite;
-}
