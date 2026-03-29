@@ -7,12 +7,16 @@ const EXPENSE_KEYWORDS: Record<string, string[]> = {
   Food: [
     "kopi", "ngopi", "makan", "makanan", "food", "restaurant", "warung", "coffee", "lunch", "dinner", "snack",
     "sarapan", "jajan", "kuliner", "gofood", "grabfood", "traveloka eats", "minuman", "cemilan",
+    "mixue", "kopikenangan", "janjijiwa", "starbucks", "mcdonalds", "kfc", "hokben", "solaria", "fore", "chatime", "dum dum",
   ],
   Transport: [
     "bensin", "transport", "grab", "gojek", "ojek", "taxi", "parkir", "tol", "gas", "angkot",
-    "transjakarta", "krl", "tiket", "toll", "spbu", "go ride", "grab car",
+    "transjakarta", "krl", "tiket", "toll", "spbu", "pertamina", "shell", "total", "kai", "bluebird",
   ],
-  Shopping: ["belanja", "shopping", "market", "mall", "tokopedia", "shopee", "lazada", "toko"],
+  Shopping: [
+    "belanja", "shopping", "market", "mall", "tokopedia", "shopee", "lazada", "toko",
+    "indomaret", "alfamart", "alfamidi", "hypermart", "superindo", "miniso", "guardian", "watson", "grandlucky",
+  ],
   Bills: ["listrik", "internet", "pulsa", "bills", "tagihan", "pln", "wifi", "bpjs", "pdam", "netflix", "spotify"],
   Health: ["obat", "dokter", "health", "apotek", "klinik", "rumah sakit", "medical", "vitamin"],
   Entertainment: ["nonton", "game", "entertainment", "hobi", "bioskop", "streaming", "youtube", "premium", "langganan"],

@@ -29,6 +29,21 @@ export async function POST(req: NextRequest) {
   if (transactionsToSave && Array.isArray(transactionsToSave)) {
     let insertedCount = 0;
     for (const trx of transactionsToSave) {
+      // Extract providerTag from the note to prevent double entry even if user clicks save twice or multiple syncs happen
+      const tagMatch = trx.note.match(/\[email:[^\]]+\]/);
+      const providerTag = tagMatch ? tagMatch[0] : null;
+
+      if (providerTag) {
+        const { data: existing } = await adminClient
+          .from("transactions")
+          .select("id")
+          .eq("user_id", user.id)
+          .ilike("note", `%${providerTag}%`)
+          .limit(1);
+        
+        if (existing && existing.length > 0) continue; // Already saved
+      }
+
       const { error } = await adminClient.from("transactions").insert({
         user_id: user.id,
         type: trx.type,
@@ -116,6 +131,7 @@ export async function POST(req: NextRequest) {
   }
 
   const previewList = [];
+  const seenTagsInBatch = new Set<string>();
   const debugInfo = [];
 
   for (const msg of messages) {
@@ -181,7 +197,8 @@ export async function POST(req: NextRequest) {
     const noteBase = `📧 ${parsed.merchantName}${parsed.merchantLocation ? ` (${parsed.merchantLocation})` : ""}${parsed.qrisRef ? ` QRIS:${parsed.qrisRef}` : ""}`;
     const note = `${noteBase} ${providerTag}`.slice(0, 200);
 
-    const category = detectCategory(parsed.type, parsed.merchantName);
+    const categoryInfo = `${parsed.merchantName} ${parsed.merchantLocation || ""}`.trim();
+    const category = detectCategory(parsed.type, categoryInfo);
 
     // Dedup via notes reference (Always check even if no-ref)
     const { data: existing } = await adminClient
@@ -191,10 +208,14 @@ export async function POST(req: NextRequest) {
       .ilike("note", `%${providerTag}%`)
       .limit(1);
       
-    if (existing && existing.length > 0) continue; // skip, already exists
+    if (existing && existing.length > 0) continue; // skip, already exists in DB
+    
+    // Dedup within same batch
+    if (seenTagsInBatch.has(providerTag)) continue;
+    seenTagsInBatch.add(providerTag);
 
     previewList.push({
-      id: parsed.referenceId || Math.random().toString(),
+      id: parsed.referenceId || `temp-${Math.random()}`,
       type: parsed.type,
       amount: parsed.amount,
       category,

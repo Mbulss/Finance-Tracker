@@ -39,6 +39,7 @@ export async function GET(req: Request) {
 
   // 2. Lakukan iterasi untuk setiap user
   for (const integration of integrations) {
+    const seenTagsInBatch = new Set<string>();
     try {
       // 3. Tukar refresh_token lama menjadi access_token baru dari Google API
       const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
@@ -133,7 +134,8 @@ export async function GET(req: Request) {
         const noteBase = `📧 ${parsed.merchantName}${parsed.merchantLocation ? ` (${parsed.merchantLocation})` : ""}${parsed.qrisRef ? ` QRIS:${parsed.qrisRef}` : ""}`;
         const note = `${noteBase} ${providerTag}`.slice(0, 200);
 
-        const category = detectCategory(parsed.type, parsed.merchantName);
+        const categoryInfo = `${parsed.merchantName} ${parsed.merchantLocation || ""}`.trim();
+        const category = detectCategory(parsed.type, categoryInfo);
 
         // Dedup via notes reference (Always check)
         const { data: existing } = await adminClient
@@ -143,7 +145,11 @@ export async function GET(req: Request) {
           .ilike("note", `%${providerTag}%`)
           .limit(1);
           
-        if (existing && existing.length > 0) continue; // skip, already exists
+        if (existing && existing.length > 0) continue; // skip, already exists in DB
+        
+        // Dedup within same batch (e.g. if Gmail returns duplicate messages)
+        if (seenTagsInBatch.has(providerTag)) continue;
+        seenTagsInBatch.add(providerTag);
 
         // 5. Simpan transaksi ke database Dashboard
         const { error: insertError } = await adminClient.from("transactions").insert({

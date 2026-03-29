@@ -47,31 +47,26 @@ export async function POST(req: NextRequest) {
 
   const providerTag = parsed.referenceId
     ? `[email:${parsed.provider}:${parsed.referenceId}]`
-    : `[email:${parsed.provider}:no-ref]`;
+    : `[email:${parsed.provider}:no-ref:${parsed.amount}:${parsed.occurredAtISO}]`;
 
-  const notePieces = [
-    providerTag,
-    parsed.merchantName,
-    parsed.merchantLocation ? `(${parsed.merchantLocation})` : "",
-    parsed.qrisRef ? `QRIS:${parsed.qrisRef}` : "",
-  ].filter(Boolean);
-  const note = notePieces.join(" ").slice(0, 200);
+  const noteBase = `📧 ${parsed.merchantName}${parsed.merchantLocation ? ` (${parsed.merchantLocation})` : ""}${parsed.qrisRef ? ` QRIS:${parsed.qrisRef}` : ""}`;
+  const note = `${noteBase} ${providerTag}`.slice(0, 200);
 
-  const category = detectCategory(parsed.type, parsed.merchantName);
+  const categoryInfo = `${parsed.merchantName} ${parsed.merchantLocation || ""}`.trim();
+  const category = detectCategory(parsed.type, categoryInfo);
 
   const supabase = createSupabaseAdmin();
 
-  // Dedup: if we have a referenceId, check for an existing note prefix.
-  if (parsed.referenceId) {
-    const { data: existing } = await supabase
-      .from("transactions")
-      .select("id")
-      .eq("user_id", userId)
-      .ilike("note", `${providerTag}%`)
-      .limit(1);
-    if (existing && existing.length > 0) {
-      return NextResponse.json({ ok: true, duplicated: true });
-    }
+  // Dedup: always check for the providerTag in existing transactions
+  const { data: existing } = await supabase
+    .from("transactions")
+    .select("id")
+    .eq("user_id", userId)
+    .ilike("note", `%${providerTag}%`)
+    .limit(1);
+
+  if (existing && existing.length > 0) {
+    return NextResponse.json({ ok: true, duplicated: true });
   }
 
   const insert = {
