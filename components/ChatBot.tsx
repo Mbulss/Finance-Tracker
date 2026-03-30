@@ -215,48 +215,42 @@ export function ChatBot({ onTransactionAdded }: { onTransactionAdded?: () => voi
 
   return (
     <>
-      {/* Floating button */}
-      <button
-        type="button"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onClick={() => {
-          if (!isDrag) setOpen((v) => !v);
-        }}
-        className={`
-          fixed z-[100] flex items-center justify-center rounded-[2rem]
-          bg-gradient-to-tr from-primary to-sky-400 text-white shadow-2xl shadow-primary/40 
-          transition-all duration-300 hover:scale-110 active:scale-95
-          touch-none
-          ${open ? "bg-slate-900 dark:bg-slate-800 !rounded-full shadow-slate-500/20" : ""}
-          ${!isDrag ? "transition-[transform,border-radius,background-color,top,right,bottom,left,width,height]" : ""}
-          ${open ? "h-12 w-12 sm:h-16 sm:w-16" : "h-16 w-16"}
-        `}
-        style={{
-          right: open ? "16px" : "min(32px, 5vw)",
-          bottom: open ? "auto" : "min(32px, 5vh)",
-          top: open ? "16px" : "auto",
-          transform: !open ? `translate(${pos.x}px, ${pos.y}px)` : "none",
-          cursor: isDrag ? "grabbing" : "grab"
-        }}
-        aria-label={open ? "Tutup chatbot" : "Buka Cike AI"}
-      >
-        <div className="relative h-7 w-7">
-          <svg 
-            className={`absolute inset-0 h-7 w-7 transition-all duration-500 ${open ? "opacity-100 scale-100 rotate-0" : "opacity-0 scale-50 -rotate-45"}`} 
-            fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-          <svg 
-            className={`absolute inset-0 h-7 w-7 transition-all duration-500 ${open ? "opacity-0 scale-50 rotate-45" : "opacity-100 scale-100 rotate-0"}`} 
-            fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-        </div>
-      </button>
+      {/* Floating button - only show when closed */}
+      {!open && (
+        <button
+          type="button"
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onClick={() => {
+            if (!isDrag) setOpen(true);
+          }}
+          className={`
+            fixed z-[100] flex items-center justify-center rounded-[2rem]
+            bg-gradient-to-tr from-primary to-sky-400 text-white shadow-2xl shadow-primary/40 
+            transition-all duration-300 hover:scale-110 active:scale-95
+            touch-none
+            ${!isDrag ? "transition-[transform,border-radius,background-color,top,right,bottom,left,width,height]" : ""}
+            h-16 w-16
+          `}
+          style={{
+            right: "min(32px, 5vw)",
+            bottom: "min(32px, 5vh)",
+            transform: `translate(${pos.x}px, ${pos.y}px)`,
+            cursor: isDrag ? "grabbing" : "grab"
+          }}
+          aria-label="Buka Cike AI"
+        >
+          <div className="relative h-7 w-7">
+            <svg 
+              className="absolute inset-0 h-7 w-7"
+              fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+            </svg>
+          </div>
+        </button>
+      )}
 
       {/* Chat panel */}
       {open && (
@@ -291,6 +285,17 @@ export function ChatBot({ onTransactionAdded }: { onTransactionAdded?: () => voi
               </div>
               <p className="text-[10px] font-black uppercase tracking-[0.2em] text-primary mt-0.5">Asisten Pintar Kamu</p>
             </div>
+            
+            {/* Close button inside header */}
+            <button
+              onClick={() => setOpen(false)}
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-rose-500 transition-all active:scale-90"
+              aria-label="Tutup"
+            >
+              <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
 
           {/* Messages */}
