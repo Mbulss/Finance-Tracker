@@ -5,15 +5,16 @@ import { formatCurrency, getMonthKey } from "@/lib/utils";
 import { CountUp } from "./CountUp";
 
 interface SummaryCardsProps {
-  transactions: Transaction[];
-  totalSavings: number;
+  transactions: any[]; // Menggunakan any[] untuk fleksibilitas tipe Transaction
+  savingsEntries: { amount: number; type: "deposit" | "withdraw"; created_at: string }[];
   monthFilter: string;
 }
 
-function sumByType(transactions: Transaction[], type: "income" | "expense") {
-  return transactions
+function sumByType(items: any[], type: string) {
+  if (!Array.isArray(items)) return 0;
+  return items
     .filter((t) => t.type === type)
-    .reduce((s, t) => s + Number(t.amount), 0);
+    .reduce((s, t) => s + (Number(t.amount) || 0), 0);
 }
 
 function getPrevMonthKey(monthKey: string): string {
@@ -22,15 +23,35 @@ function getPrevMonthKey(monthKey: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export function SummaryCards({ transactions, totalSavings, monthFilter }: SummaryCardsProps) {
+export function SummaryCards({ transactions, savingsEntries, monthFilter }: SummaryCardsProps) {
   const isAllTime = monthFilter === "all";
   const current = isAllTime
     ? transactions
     : transactions.filter((t) => getMonthKey(new Date(t.created_at)) === monthFilter);
   const income = sumByType(current, "income");
   const expense = sumByType(current, "expense");
-  const balance = income - expense;
-  const netWorth = balance + totalSavings;
+
+  // Saldo kumulatif (Pemasukan - Pengeluaran sampai bulan ini) agar saldo bulan sebelumnya terbawa
+  const cumulativeTransactions = isAllTime
+    ? transactions
+    : transactions.filter((t) => getMonthKey(new Date(t.created_at)) <= monthFilter);
+
+  const balance = sumByType(cumulativeTransactions, "income") - sumByType(cumulativeTransactions, "expense");
+  
+  // Tabungan kumulatif sampai bulan ini
+  const cumulativeSavings = isAllTime
+    ? (savingsEntries || [])
+    : (savingsEntries || []).filter((s) => {
+        try {
+          return getMonthKey(new Date(s.created_at)) <= monthFilter;
+        } catch {
+          return false;
+        }
+      });
+  
+  const totalSavings = sumByType(cumulativeSavings, "deposit") - sumByType(cumulativeSavings, "withdraw");
+  
+  const netWorth = (Number(balance) || 0) + (Number(totalSavings) || 0);
 
   const prevKey = isAllTime ? "" : getPrevMonthKey(monthFilter);
   const prevTransactions = isAllTime
@@ -76,7 +97,7 @@ export function SummaryCards({ transactions, totalSavings, monthFilter }: Summar
             <h3 className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white tabular-nums">
               <CountUp value={balance} formatter={(n) => formatCurrency(n)} />
             </h3>
-            <p className="mt-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pemasukan - Pengeluaran</p>
+            <p className="mt-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Saldo Kumulatif (Carry-over)</p>
           </div>
         </div>
       </div>

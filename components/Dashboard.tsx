@@ -34,7 +34,7 @@ export function Dashboard({ userId }: DashboardProps) {
   const [optimisticTransactions, setOptimisticTransactions] = useState<Transaction[]>([]);
   const [pendingDeleteIds, setPendingDeleteIds] = useState<Set<string>>(new Set());
   const [prefillFromPhoto, setPrefillFromPhoto] = useState<PrefillFromPhoto | null>(null);
-  const [savingsEntries, setSavingsEntries] = useState<{ amount: number; type: "deposit" | "withdraw" }[]>([]);
+  const [savingsEntries, setSavingsEntries] = useState<{ amount: number; type: "deposit" | "withdraw"; created_at: string }[]>([]);
   const [totalSavings, setTotalSavings] = useState(0);
   const [showImport, setShowImport] = useState(false);
   const [syncingEmail, setSyncingEmail] = useState(false);
@@ -54,7 +54,7 @@ export function Dashboard({ userId }: DashboardProps) {
     // Fetch savings for Net Worth
     const { data: savingsData } = await supabase
       .from("savings_entries")
-      .select("amount, type")
+      .select("amount, type, created_at")
       .eq("user_id", userId);
     
     if (savingsData) {
@@ -134,7 +134,12 @@ export function Dashboard({ userId }: DashboardProps) {
 
   const income = filteredByMonth.filter((t) => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
   const expense = filteredByMonth.filter((t) => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
-  const balance = income - expense;
+  
+  // Saldo kumulatif untuk peringatan saldo negatif
+  const cumulativeTransactions = periodType === "all"
+    ? transactions
+    : transactions.filter((t) => getMonthKey(new Date(t.created_at)) <= monthFilter);
+  const balance = cumulativeTransactions.reduce((acc, t) => acc + (t.type === "income" ? (Number(t.amount) || 0) : -(Number(t.amount) || 0)), 0);
 
   const handleDelete = async (id: string) => {
     setPendingDeleteIds((prev) => new Set(prev).add(id));
@@ -309,7 +314,7 @@ export function Dashboard({ userId }: DashboardProps) {
           <div className="animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.1s" }}>
             <SummaryCards
               transactions={transactions}
-              totalSavings={totalSavings}
+              savingsEntries={savingsEntries}
               monthFilter={periodType === "all" ? "all" : monthFilter}
             />
           </div>
