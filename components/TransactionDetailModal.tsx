@@ -87,7 +87,7 @@ export function TransactionDetailModal({ transaction, onClose }: TransactionDeta
               <div className="space-y-1">
                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Catatan Lengkap</span>
                 <p className="text-sm font-bold text-slate-700 dark:text-slate-200 leading-relaxed italic">
-                  "{displayNote}"
+                  &quot;{displayNote}&quot;
                 </p>
               </div>
               
