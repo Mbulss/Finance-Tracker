@@ -142,11 +142,23 @@ export function AuthForm({
           return;
         }
       } else if (isSignUp) {
-        if (password !== confirmPassword) throw new Error("Password konfirmasi tidak cocok.");
-        if (password.length < 8) throw new Error("Password minimal 8 karakter demi keamanan.");
-        const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo } });
-        if (error) throw error;
-        setMessage("Email konfirmasi dikirim! Cek inbox kamu.");
+        if (!otpRequested) {
+          if (password !== confirmPassword) throw new Error("Password konfirmasi tidak cocok.");
+          if (password.length < 8) throw new Error("Password minimal 8 karakter demi keamanan.");
+          const { error } = await supabase.auth.signUp({ email, password, options: { emailRedirectTo: redirectTo } });
+          if (error) throw error;
+          setOtpRequested(true);
+          setMessage("");
+        } else {
+          if (otp.length !== 8) throw new Error("Kode OTP harus 8 digit angka.");
+          const { error } = await supabase.auth.verifyOtp({ email, token: otp, type: 'signup' });
+          if (error) throw error;
+          willRedirect = true;
+          setMessage("Akun berhasil diverifikasi! Mengalihkan ke Dashboard...");
+          router.push("/");
+          router.refresh();
+          return;
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
@@ -256,10 +268,10 @@ export function AuthForm({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {isForgotPassword && otpRequested ? (
+          {otpRequested ? (
             <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 relative py-2">
               <label htmlFor="otp" className="text-center block text-[11px] font-black uppercase tracking-[0.2em] text-slate-600 dark:text-slate-300">
-                Masukkan Kode OTP
+                {isSignUp ? "Verifikasi Akun Baru" : "Masukkan Kode OTP"}
               </label>
               
               <div className="relative flex justify-center gap-1.5 sm:gap-2">
@@ -307,8 +319,9 @@ export function AuthForm({
 
               <div className="rounded-2xl bg-amber-500/10 p-4 border border-amber-500/20 text-center">
                  <p className="text-[10px] sm:text-[11px] font-bold text-amber-700 dark:text-amber-500 leading-relaxed">
-                   Cek pesan masuk di email kamu. <br className="hidden sm:block" />
-                   Ketik 8 angkanya di atas. <span className="underline decoration-amber-500/50 underline-offset-2">Abaikan tombol link.</span>
+                   Cek pesan masuk di email <span className="text-slate-900 dark:text-white font-black">{email}</span>. <br className="hidden sm:block" />
+                   {isSignUp ? "Gunakan 8 angka pendaftaran kamu." : "Ketik 8 angkanya di atas." } <br />
+                   <span className="underline decoration-amber-500/50 underline-offset-2">Abaikan tombol link di email.</span>
                  </p>
               </div>
             </div>
@@ -329,7 +342,7 @@ export function AuthForm({
             </div>
           )}
 
-          {!isForgotPassword && (
+          {!otpRequested && !isForgotPassword && (
             <div className="space-y-3">
               <div className="space-y-1.5">
                 <div className="flex items-center justify-between px-1">
@@ -438,13 +451,19 @@ export function AuthForm({
         </form>
 
         <div className="mt-8 flex flex-col gap-3 text-center">
-          {isForgotPassword ? (
+          {isForgotPassword || (isSignUp && otpRequested) ? (
             <button
               type="button"
-              onClick={() => { setIsForgotPassword(false); setOtpRequested(false); setOtp(""); setMessage(""); }}
+              onClick={() => { 
+                setIsForgotPassword(false); 
+                setIsSignUp(false);
+                setOtpRequested(false); 
+                setOtp(""); 
+                setMessage(""); 
+              }}
               className="text-[10px] font-black uppercase tracking-widest text-slate-400 hover:text-primary transition-all underline underline-offset-4 decoration-slate-200 dark:decoration-slate-800"
             >
-              ← Kembali Masuk
+              ← Kembali ke Menu Awal
             </button>
           ) : (
             <button

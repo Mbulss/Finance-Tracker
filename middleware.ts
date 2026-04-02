@@ -19,7 +19,43 @@ export async function middleware(request: NextRequest) {
       },
     }
   );
-  await supabase.auth.getUser();
+
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const adminEmail = process.env.ADMIN_EMAIL;
+  const isUserAdmin = user && adminEmail && user.email === adminEmail;
+
+  // Protect /admin routes
+  if (request.nextUrl.pathname.startsWith("/admin")) {
+    if (!user) {
+      return NextResponse.redirect(new URL("/auth", request.url));
+    }
+    if (!isUserAdmin) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+  }
+
+  // Handle Home and other User routes for Admin users
+  // We allow /profile and /faq to be accessed by Admin
+  const isUserRoute = 
+    request.nextUrl.pathname === "/" || 
+    request.nextUrl.pathname === "/tabungan" || 
+    request.nextUrl.pathname === "/email-sync" || 
+    request.nextUrl.pathname === "/link-telegram";
+
+  if (isUserAdmin && isUserRoute) {
+    return NextResponse.redirect(new URL("/admin", request.url));
+  }
+
+  // Redirect to dashboard if trying to access auth while logged in
+  if (user && request.nextUrl.pathname.startsWith("/auth")) {
+    // If admin is logging in, they should go straight to /admin
+    if (isUserAdmin) {
+      return NextResponse.redirect(new URL("/admin", request.url));
+    }
+    return NextResponse.redirect(new URL("/", request.url));
+  }
+
   return response;
 }
 
