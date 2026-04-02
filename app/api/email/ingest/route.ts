@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     ? `[email:${parsed.provider}:${parsed.referenceId}]`
     : `[email:${parsed.provider}:no-ref:${parsed.amount}:${parsed.occurredAtISO}]`;
 
-  const noteBase = `📧 ${parsed.merchantName}${parsed.merchantLocation ? ` (${parsed.merchantLocation})` : ""}${parsed.qrisRef ? ` QRIS:${parsed.qrisRef}` : ""}`;
+  const noteBase = `${parsed.merchantName}${parsed.merchantLocation ? ` (${parsed.merchantLocation})` : ""}${parsed.qrisRef ? ` QRIS:${parsed.qrisRef}` : ""}`;
   const note = `${noteBase} ${providerTag}`.slice(0, 200);
 
   const categoryInfo = `${parsed.merchantName} ${parsed.merchantLocation || ""}`.trim();

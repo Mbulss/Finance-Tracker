@@ -10,6 +10,7 @@ import { CountUp } from "@/components/CountUp";
 import { SkeletonCard, Skeleton } from "@/components/Skeleton";
 import { EmptyState } from "@/components/EmptyState";
 import { EditSavingsEntryModal } from "@/components/EditSavingsEntryModal";
+import { SavingsDetailModal } from "@/components/SavingsDetailModal";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as ReTooltip, Legend as ReLegend } from "recharts";
 import { SelectDropdown } from "./SelectDropdown";
 
@@ -137,6 +138,7 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
   const [submitLoading, setSubmitLoading] = useState(false);
   const [error, setError] = useState("");
   const [editingEntry, setEditingEntry] = useState<SavingsEntry | null>(null);
+  const [viewingEntry, setViewingEntry] = useState<SavingsEntry | null>(null);
   const [deletingEntry, setDeletingEntry] = useState<SavingsEntry | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [newPotName, setNewPotName] = useState("");
@@ -1301,17 +1303,17 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
       )}
 
       {/* Riwayat */}
-      <section className="rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 sm:p-10 shadow-2xl relative group">
+      <section className="group relative overflow-hidden rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-8 shadow-2xl transition-all hover:shadow-primary/5 animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.25s" }}>
         <div className="absolute inset-0 overflow-hidden rounded-[2.5rem] pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-96 h-96 bg-primary/5 rounded-full blur-[120px] group-hover:scale-110 transition-transform" />
+          <div className="absolute -right-24 -top-24 w-64 h-64 bg-slate-500/5 rounded-full blur-3xl" />
         </div>
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 relative z-10">
           <div>
             <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Riwayat Aktivitas</h2>
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest">Pantau mutasi saldo tabunganmu</p>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1 uppercase tracking-widest">Pantau mutasi saldo tabunganmu</p>
           </div>
           {entriesForRiwayat.length > 0 && (
-            <div className="px-4 py-2 rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-border/20 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+            <div className="px-4 py-2 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border border-border/20 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
               Total {entriesForRiwayat.length} Rekaman
             </div>
           )}
@@ -1335,8 +1337,9 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
               );
               return (
                 <>
-                  <div className="overflow-x-auto -mx-6 px-6">
-                    <table className="w-full text-sm">
+                  <div className="overflow-x-auto scrollbar-none -mx-8 sm:-mx-8">
+                    <div className="inline-block min-w-full align-middle px-8 sm:px-8">
+                      <table className="min-w-[640px] w-full text-sm">
                       <thead>
                         <tr className="text-left border-b border-border/50 dark:border-slate-700 bg-slate-50/50 dark:bg-slate-800/30 text-slate-400">
                           <th className="px-4 py-4 font-black text-[10px] uppercase tracking-[0.2em] first:rounded-tl-2xl">Tanggal</th>
@@ -1385,38 +1388,54 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
                                 </p>
                             </td>
                             <td className="px-3 sm:px-4 py-4 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <button
-                                  onClick={() => setEditingEntry(entry)}
-                                  className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-primary/10 hover:text-primary text-slate-400 transition-all"
-                                  title="Edit"
-                                >
-                                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" /></svg>
-                                </button>
-                                <button
-                                  onClick={() => setDeletingEntry(entry)}
-                                  className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-expense/10 hover:text-expense text-slate-400 transition-all"
-                                  title="Hapus"
-                                >
-                                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                </button>
-                              </div>
+                               <div className="flex items-center justify-end gap-2 sm:gap-3">
+                                 <button
+                                   onClick={() => setViewingEntry(entry)}
+                                   className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white dark:bg-slate-800 text-slate-400 hover:text-primary hover:bg-primary/5 hover:border-primary/30 border border-slate-200/50 dark:border-slate-700/50 shadow-sm transition-all duration-200 group/btn"
+                                   title="Detail"
+                                 >
+                                   <svg className="h-5 w-5 transition-transform group-hover/btn:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                   </svg>
+                                 </button>
+                                 <button
+                                   onClick={() => setEditingEntry(entry)}
+                                   className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white dark:bg-slate-800 text-slate-400 hover:text-amber-500 hover:bg-amber-500/5 hover:border-amber-500/30 border border-slate-200/50 dark:border-slate-700/50 shadow-sm transition-all duration-200 group/btn"
+                                   title="Edit"
+                                 >
+                                   <svg className="h-5 w-5 transition-transform group-hover/btn:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                   </svg>
+                                 </button>
+                                 <button
+                                   onClick={() => setDeletingEntry(entry)}
+                                   className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 hover:bg-rose-500/5 hover:border-rose-500/30 border border-slate-200/50 dark:border-slate-700/50 shadow-sm transition-all duration-200 group/btn"
+                                   title="Hapus"
+                                 >
+                                   <svg className="h-5 w-5 transition-transform group-hover/btn:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                   </svg>
+                                 </button>
+                               </div>
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
+                </div>
 
                   {totalRiwayatPages > 1 && (
-                    <div className="flex items-center justify-between pt-6 border-t border-border/30 dark:border-slate-700">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Halaman {safeRiwayatPage} / {totalRiwayatPages}</p>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border dark:border-slate-600 pt-4">
+                      <p className="text-sm text-muted dark:text-slate-400">Halaman {safeRiwayatPage} dari {totalRiwayatPages}</p>
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
                           onClick={() => setRiwayatPage((p) => Math.max(1, p - 1))}
                           disabled={safeRiwayatPage <= 1}
                           className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 disabled:opacity-30 hover:bg-primary/10 hover:text-primary transition-all"
+                          title="Halaman Sebelumnya"
                         >
                           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
                         </button>
@@ -1425,6 +1444,7 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
                           onClick={() => setRiwayatPage((p) => Math.min(totalRiwayatPages, p + 1))}
                           disabled={safeRiwayatPage >= totalRiwayatPages}
                           className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 disabled:opacity-30 hover:bg-primary/10 hover:text-primary transition-all"
+                          title="Halaman Selanjutnya"
                         >
                           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
                         </button>
@@ -1442,6 +1462,11 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
           pots={pots}
           onClose={() => setEditingEntry(null)}
           onSave={handleEdit}
+        />
+        <SavingsDetailModal
+          entry={viewingEntry}
+          pots={pots}
+          onClose={() => setViewingEntry(null)}
         />
         <ConfirmModal
           open={!!deletingEntry}

@@ -103,4 +103,11 @@ body {
   .scrollbar-thin::-webkit-scrollbar-thumb {
     @apply bg-slate-300 dark:bg-slate-600 rounded-full;
   }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 }

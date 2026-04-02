@@ -130,12 +130,12 @@ export function EditTransactionModal({ transaction, onClose, onSave }: EditTrans
 
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-4">Catatan</label>
-            <input
-              type="text"
+            <textarea
               value={note}
               onChange={(e) => setNote(e.target.value)}
               placeholder="Contoh: Makan siang..."
-              className="w-full h-12 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 px-5 text-sm font-bold text-slate-900 dark:text-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+              rows={3}
+              className="w-full min-h-[80px] rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 px-5 py-3 text-sm font-bold text-slate-900 dark:text-white focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none resize-none scrollbar-hide"
             />
           </div>
 

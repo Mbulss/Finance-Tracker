@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import type { SavingsEntry, SavingsPot } from "@/components/TabunganContent";
 import { formatAmountDisplay, parseAmountInput } from "@/lib/utils";
 import { SelectDropdown } from "./SelectDropdown";
@@ -58,7 +59,7 @@ export function EditSavingsEntryModal({ entry, pots, onClose, onSave }: EditSavi
     }
   }
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 cursor-default">
       <div 
         className="absolute inset-0 bg-slate-900/60 dark:bg-black/90 backdrop-blur-md animate-fade-in" 
@@ -158,12 +159,12 @@ export function EditSavingsEntryModal({ entry, pots, onClose, onSave }: EditSavi
           <div className="space-y-1.5">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Catatan (Pesan)</label>
             <div className="relative group">
-              <input
-                type="text"
+              <textarea
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="Deskripsi transaksi..."
-                className="w-full h-12 px-4 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 text-sm font-bold text-slate-700 dark:text-slate-200 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                rows={3}
+                className="w-full min-h-[80px] px-4 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 text-sm font-bold text-slate-700 dark:text-slate-200 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none resize-none scrollbar-hide"
               />
             </div>
           </div>
@@ -196,4 +197,7 @@ export function EditSavingsEntryModal({ entry, pots, onClose, onSave }: EditSavi
       </div>
     </div>
   );
+
+  if (typeof document === "undefined") return null;
+  return createPortal(modalContent, document.body);
 }
