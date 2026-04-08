@@ -97,8 +97,8 @@ export async function getAdminStats() {
     systemHealth,
     recentUsers: [...users]
       .sort((a, b) => {
-        const dateA = a.last_sign_in_at || a.created_at;
-        const dateB = b.last_sign_in_at || b.created_at;
+        const dateA = a.user_metadata?.last_active_at || a.last_sign_in_at || a.created_at;
+        const dateB = b.user_metadata?.last_active_at || b.last_sign_in_at || b.created_at;
         return new Date(dateB).getTime() - new Date(dateA).getTime();
       })
       .slice(0, 5)
@@ -106,7 +106,8 @@ export async function getAdminStats() {
           id: u.id,
           email: u.email,
           created_at: u.created_at,
-          last_sign_in: u.last_sign_in_at
+          last_sign_in: u.last_sign_in_at,
+          metadata: u.user_metadata
       }))
   };
 }

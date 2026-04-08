@@ -14,6 +14,7 @@ import {
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 interface AdminOverviewProps {
   data: {
@@ -48,11 +49,20 @@ interface AdminOverviewProps {
  */
 export function AdminOverview({ data }: AdminOverviewProps) {
   const { stats, growthData, recentUsers, topUsers, systemHealth } = data;
+  const router = useRouter();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-  }, []);
+    
+    // Auto-refresh the entire admin data every 1 minute
+    const interval = setInterval(() => {
+      router.refresh();
+      console.log("Admin Dashboard auto-refreshed.");
+    }, 60 * 1000); 
+
+    return () => clearInterval(interval);
+  }, [router]);
 
   if (!mounted) return null;
 
@@ -233,16 +243,29 @@ export function AdminOverview({ data }: AdminOverviewProps) {
                   </td>
                   <td className="px-10 py-7">
                     <p className="text-xs font-black text-slate-900 dark:text-white">
-                      {user.last_sign_in 
-                        ? new Date(user.last_sign_in).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' }) 
-                        : 'Initialization...'}
+                      {(() => {
+                        const lastActive = user.metadata?.last_active_at || user.last_sign_in || user.created_at;
+                        return new Date(lastActive).toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+                      })()}
                     </p>
                   </td>
                   <td className="px-10 py-7 text-right">
-                    <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest">
-                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                       Active
-                    </span>
+                    {(() => {
+                        const lastActive = new Date(user.metadata?.last_active_at || user.last_sign_in || user.created_at);
+                        const isOnline = (new Date().getTime() - lastActive.getTime()) < 10 * 60 * 1000; // 10 minutes
+                        
+                        return isOnline ? (
+                          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest animate-pulse">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            ONLINE
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 text-[10px] font-black uppercase tracking-widest">
+                            <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+                            AWAY
+                          </span>
+                        )
+                    })()}
                   </td>
                 </tr>
               ))}

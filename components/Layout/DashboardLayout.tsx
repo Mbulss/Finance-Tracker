@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { Sidebar } from "./Sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { ChatBot } from "@/components/ChatBot";
+import { ActivityHeartbeat } from "@/components/ActivityHeartbeat";
 
 interface DashboardLayoutProps {
   children: React.ReactNode;
@@ -35,6 +36,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <div className="min-h-screen bg-mesh">
+      <ActivityHeartbeat />
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <main className="min-h-screen lg:pl-64 focus:outline-none overflow-x-hidden">
         <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-border dark:border-slate-700 bg-card/80 dark:bg-slate-800/80 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 backdrop-blur-md sm:px-6 lg:hidden">
