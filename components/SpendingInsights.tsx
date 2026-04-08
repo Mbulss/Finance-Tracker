@@ -7,9 +7,10 @@ import { formatCurrency, getMonthKey } from "@/lib/utils";
 interface SpendingInsightsProps {
   transactions: Transaction[];
   monthFilter: string;
+  showAmounts?: boolean;
 }
 
-export function SpendingInsights({ transactions, monthFilter }: SpendingInsightsProps) {
+export function SpendingInsights({ transactions, monthFilter, showAmounts = true }: SpendingInsightsProps) {
   const isAllTime = monthFilter === "all";
   
   const insights = useMemo(() => {
@@ -26,9 +27,7 @@ export function SpendingInsights({ transactions, monthFilter }: SpendingInsights
     const income = currentMonthTransactions.filter(t => t.type === "income").reduce((s, t) => s + Number(t.amount), 0);
     const expense = currentMonthTransactions.filter(t => t.type === "expense").reduce((s, t) => s + Number(t.amount), 0);
 
-    // Health Score: 0 - 100 based on savings rate (income - expense) / income
-    const savingsRate = income > 0 ? ((income - expense) / income) * 100 : 0;
-    const healthScore = Math.max(0, Math.min(100, Math.round(savingsRate + 50))); // Adjusted for easier visualization
+
 
     // Top Category Change
     const getCategoryTotals = (txs: Transaction[]) => {
@@ -51,53 +50,14 @@ export function SpendingInsights({ transactions, monthFilter }: SpendingInsights
       topCategoryInsight = { category: cat, amount: amt, pctChange };
     }
 
-    return { healthScore, topCategoryInsight, income, expense };
+    return { topCategoryInsight, income, expense };
   }, [transactions, monthFilter, isAllTime]);
 
   if (!insights) return null;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pb-6">
-      <div className="group relative overflow-hidden rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-8 shadow-2xl transition-all">
-         <div className="absolute -left-16 -top-16 h-48 w-48 rounded-full bg-emerald-500/5 blur-3xl" />
-         <div className="relative">
-            <h3 className="text-sm font-black uppercase tracking-widest text-slate-400 mb-6">Financial Health</h3>
-            <div className="flex items-center gap-6">
-               <div className="relative h-24 w-24 shrink-0">
-                  <svg className="h-full w-full" viewBox="0 0 36 36">
-                    <path
-                      className="text-slate-200 dark:text-slate-800"
-                      strokeDasharray="100, 100"
-                      strokeWidth="3"
-                      stroke="currentColor"
-                      fill="transparent"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                    <path
-                      className={`${insights.healthScore > 70 ? "text-emerald-500" : insights.healthScore > 40 ? "text-amber-500" : "text-rose-500"} transition-all duration-1000`}
-                      strokeDasharray={`${insights.healthScore}, 100`}
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      stroke="currentColor"
-                      fill="transparent"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-xl font-black text-slate-800 dark:text-white uppercase">{insights.healthScore}</span>
-                  </div>
-               </div>
-               <div className="space-y-1">
-                  <p className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter">
-                    {insights.healthScore > 70 ? "Kondisi Sangat Bagus" : insights.healthScore > 50 ? "Kondisi Aman" : "Perlu Waspada"}
-                  </p>
-                  <p className="text-xs font-bold text-slate-500 dark:text-slate-400">
-                    Berdasarkan rasio tabungan bulan ini.
-                  </p>
-               </div>
-            </div>
-         </div>
-      </div>
+    <div className="grid grid-cols-1 gap-6 pb-6">
+
 
       <div className="group relative overflow-hidden rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-8 shadow-2xl transition-all">
          <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-primary/5 blur-3xl" />
@@ -118,7 +78,9 @@ export function SpendingInsights({ transactions, monthFilter }: SpendingInsights
                   />
                 </div>
                 <p className="text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-[0.15em]">
-                  Total: <span className="text-slate-800 dark:text-white">{formatCurrency(insights.topCategoryInsight.amount)}</span> bulan ini
+                  Total: <span className="text-slate-800 dark:text-white">
+                    {showAmounts ? formatCurrency(insights.topCategoryInsight.amount) : "Rp ******"}
+                  </span> bulan ini
                 </p>
               </div>
             ) : (

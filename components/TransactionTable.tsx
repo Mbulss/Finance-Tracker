@@ -14,13 +14,14 @@ interface TransactionTableProps {
   transactions: Transaction[];
   onDelete: (id: string) => void;
   onEdit: (id: string, data: { type: "income" | "expense"; amount: number; category: string; note: string }) => void;
+  showAmounts?: boolean;
 }
 
 const PAGE_SIZE = 15;
 
 type TypeFilter = "all" | "income" | "expense";
 
-export function TransactionTable({ transactions, onDelete, onEdit }: TransactionTableProps) {
+export function TransactionTable({ transactions, onDelete, onEdit, showAmounts = true }: TransactionTableProps) {
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [viewing, setViewing] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
@@ -103,7 +104,7 @@ export function TransactionTable({ transactions, onDelete, onEdit }: Transaction
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Cari catatan, kategori, atau nominal..."
+              placeholder={showAmounts ? "Cari catatan, kategori, atau nominal..." : "Cari catatan atau kategori..."}
               className="w-full h-14 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl pl-12 pr-4 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
             />
           </div>
@@ -149,7 +150,7 @@ export function TransactionTable({ transactions, onDelete, onEdit }: Transaction
                   </td>
                   <td className="px-3 sm:px-4 py-4 tabular-nums font-black text-sm whitespace-nowrap">
                      <span className={t.type === "income" ? "text-green-600 dark:text-income" : "text-red-600 dark:text-expense"}>
-                      {t.type === "income" ? "+" : "-"} {formatCurrency(Number(t.amount))}
+                      {t.type === "income" ? "+" : "-"} {showAmounts ? formatCurrency(Number(t.amount)) : "Rp ******"}
                     </span>
                   </td>
                   <td className="hidden sm:table-cell px-3 sm:px-4 py-4 whitespace-nowrap">

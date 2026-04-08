@@ -38,9 +38,23 @@ export function Dashboard({ userId }: DashboardProps) {
   const [totalSavings, setTotalSavings] = useState(0);
   const [showImport, setShowImport] = useState(false);
   const [syncingEmail, setSyncingEmail] = useState(false);
+  const [showAmounts, setShowAmounts] = useState(true);
   const liveUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const supabase = createClient();
   const { showToast } = useToast();
+
+  useEffect(() => {
+    const saved = localStorage.getItem("dashboard_show_amounts");
+    if (saved !== null) {
+      setShowAmounts(saved === "true");
+    }
+  }, []);
+
+  const toggleShowAmounts = () => {
+    const newVal = !showAmounts;
+    setShowAmounts(newVal);
+    localStorage.setItem("dashboard_show_amounts", String(newVal));
+  };
 
   const fetchTransactions = useCallback(async () => {
     const { data, error } = await supabase
@@ -235,16 +249,52 @@ export function Dashboard({ userId }: DashboardProps) {
               </span>
             )}
           </div>
-          <h1 className="text-4xl lg:text-5xl font-black tracking-tighter text-slate-900 dark:text-white uppercase transform-gpu">
-            Ringkasan <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-sky-400 will-change-transform">Keuangan</span>
-          </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-4xl lg:text-5xl font-black tracking-tighter text-slate-900 dark:text-white uppercase transform-gpu leading-tight">
+                Ringkasan <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-sky-400 will-change-transform">Keuangan</span>
+              </h1>
+              <button
+                type="button"
+                onClick={toggleShowAmounts}
+                className="sm:hidden mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border border-border/50 dark:border-slate-700/50 text-slate-400 hover:text-primary transition-all active:scale-90 shadow-sm"
+                title={showAmounts ? "Hide" : "Unhide"}
+              >
+                {showAmounts ? (
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                ) : (
+                  <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                  </svg>
+                )}
+              </button>
+            </div>
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400 uppercase tracking-widest transform-gpu">
             Pantau arus kas dan kesehatan finansialmu
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
-          <div className="grid grid-cols-2 p-1 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border border-border/50 dark:border-slate-700/50 shadow-sm w-full sm:w-[220px] h-[52px]">
+        <div className="flex flex-row items-center gap-3 sm:gap-4 flex-wrap sm:flex-nowrap">
+          <button
+            type="button"
+            onClick={toggleShowAmounts}
+            className="hidden sm:flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border border-border/50 dark:border-slate-700/50 text-slate-400 hover:text-primary transition-all active:scale-95 shadow-sm"
+            title={showAmounts ? "Hide" : "Unhide"}
+          >
+            {showAmounts ? (
+              <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+              </svg>
+            ) : (
+              <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+              </svg>
+            )}
+          </button>
+          <div className="flex-1 sm:flex-none grid grid-cols-2 p-1 rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border border-border/50 dark:border-slate-700/50 shadow-sm sm:w-[220px] h-[52px]">
             <button
               type="button"
               onClick={() => setPeriodType("all")}
@@ -273,6 +323,7 @@ export function Dashboard({ userId }: DashboardProps) {
               <MonthPicker value={monthFilter} onChange={setMonthFilter} className="border-none bg-transparent shadow-none" />
             </div>
           )}
+
           <button
             type="button"
             onClick={handleExportCSV}
@@ -316,6 +367,7 @@ export function Dashboard({ userId }: DashboardProps) {
               transactions={transactions}
               savingsEntries={savingsEntries}
               monthFilter={periodType === "all" ? "all" : monthFilter}
+              showAmounts={showAmounts}
             />
           </div>
           
@@ -324,6 +376,7 @@ export function Dashboard({ userId }: DashboardProps) {
             <SpendingInsights 
               transactions={transactions} 
               monthFilter={periodType === "all" ? "all" : monthFilter} 
+              showAmounts={showAmounts}
             />
           </div>
         </>
@@ -363,7 +416,7 @@ export function Dashboard({ userId }: DashboardProps) {
           </div>
           <div className="flex flex-1 items-start justify-center">
             <div className="w-full mt-4">
-              <ExpensePieChart transactions={filteredByMonth} />
+              <ExpensePieChart transactions={filteredByMonth} showAmounts={showAmounts} />
             </div>
           </div>
         </section>
@@ -378,6 +431,7 @@ export function Dashboard({ userId }: DashboardProps) {
         <MonthlyBarChart
           transactions={transactions}
           showAllMonths={periodType === "all"}
+          showAmounts={showAmounts}
         />
       </section>
 
@@ -391,6 +445,7 @@ export function Dashboard({ userId }: DashboardProps) {
           transactions={displayedForTable}
           onDelete={handleDelete}
           onEdit={handleEdit}
+          showAmounts={showAmounts}
         />
 
       </section>

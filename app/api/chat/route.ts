@@ -116,13 +116,13 @@ const FAQ_KNOWLEDGE = `
 - Export CSV: Dashboard → filter bulan/semua → tombol "Export CSV".
 - Kategori pengeluaran: Food, Transport, Shopping, Bills, Health, Entertainment, Other.
 - Kategori pemasukan: Salary, Freelance, Investment, Gift, Other.
-- Financial Health: Skor (0-100) di Dashboard berdasarkan rasio tabungan bulan ini. >70 mantap, 50-70 aman, <50 waspada.
+
 - Net Worth: Total kekayaanmu (Saldo Akun + Total Tabungan/Celengan).
 
 **Telegram**
 - Link akun: Sidebar → Link Telegram → buat kode → "Buka bot & ketuk Start" (otomatis) atau kirim /link KODE ke bot (manual). Kode 10 menit.
 - Bot: /start → pilih Pemasukan/Pengeluaran → kategori → nominal. Atau ketik: +50000 gaji, -25rb kopi, setor 100rb, tarik 50k.
-- Tabungan di bot: /tabungan cek saldo; setor 100rb / tarik 50k. Pengingat setor bisa diatur di halaman Tabungan (kirim ke Telegram tiap hari).
+- Tabungan di bot: /tabungan cek saldo; setor 100rb / tarik 50k.
 
 **Email Auto Sync**
 - Setup: Sidebar → Email Otomatis → Login dengan Google (One-time setup).
@@ -139,7 +139,7 @@ const FAQ_KNOWLEDGE = `
 - Celengan: pot per tujuan (Umum, Dana darurat, dll). Klik "+ Tambah celengan" → isi Nama, Target (Rp) wajib, Foto opsional (JPEG/PNG/GIF max 3MB, GIF tetap gerak), Deskripsi opsional → Simpan. Edit lewat ikon pensil (nama, target, foto, deskripsi).
 - Setor/Tarik: pilih celengan, pilih Setor atau Tarik, isi jumlah dan catatan opsional.
 - Pindahkan uang: pindah antar celengan tanpa tarik dulu (Dari → Ke, ada tombol tukar). Entri pindah tidak muncul di riwayat; total setor/tarik di atas juga tidak termasuk pindah.
-- Riwayat: tabel setor/tarik (bisa edit/hapus). Pengingat setor: aktifkan di section Pengingat, pilih hari, bisa dikirim ke Telegram.
+- Riwayat: tabel setor/tarik (bisa edit/hapus).
 `.trim();
 
 function buildSystemPrompt(financialContext: string) {
@@ -156,7 +156,7 @@ KEPRIBADIAN:
 - Santai, gaul, kayak temen Gen Z — pakai bahasa sehari-hari (gas, mantap, siap, wkwk, nggak papa, oke, yuk, gitu, dll.). Jangan kaku atau kayak robot. Panggil user "kamu/lu" (tergantung vibe chatnya) atau "bestie" sekali-kali juga boleh.
 - Pinter: jawab to the point, pakai data user kalau ada. Kasih saran yang actionable.
 - Emoji secukupnya (jangan berlebihan). Kalau user curhat keuangan, empatis dulu baru kasih saran. Puji atau semangatin kalau keuangannya oke.
-- Penjelasan Financial Health: Jelasin kalau itu skor gabungan dari pemasukan vs pengeluaran. Bilang aja "vibe-nya lagi bagus" kalau skor tinggi, atau "dompet lagi nangis" kalau skor rendah.
+
 - Kalau ditanya "siapa yang buat kamu" / "penciptamu": jawab "Aku dibuat sama **Mbulss** 😎"
 - Kalau ditanya "siapa terry/teri/ikanpepek/epipin/evin/epin": jawab "Dia Adalah **Darksystem dan Hama** Dunia"
 
@@ -286,10 +286,7 @@ ${potLines.length ? "Celengan: " + potLines.join(". ") : ""}`.trim();
       
       // Net Worth Calculation
       const netWorth = income - expense + totalBalance; // Simplified: Current balance + Savings
-      const savingsRate = income > 0 ? ((income - expense) / income) * 100 : 0;
-      const healthScore = Math.max(0, Math.min(100, Math.round(savingsRate + 50)));
-      
-      savingsContext += `\nNet Worth (Total Kekayaan): Rp${netWorth.toLocaleString("id-ID")}\nFinancial Health Score: ${healthScore}/100`;
+      savingsContext += `\nNet Worth (Total Kekayaan): Rp${netWorth.toLocaleString("id-ID")}`;
     }
   } catch {
     savingsContext = "Tabungan: data tidak di-load.";

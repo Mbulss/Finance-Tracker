@@ -7,6 +7,7 @@ import { formatCurrency } from "@/lib/utils";
 
 interface ExpensePieChartProps {
   transactions: Transaction[];
+  showAmounts?: boolean;
 }
 
 const COLORS = [
@@ -25,7 +26,7 @@ function useIsMobile(breakpoint = 640) {
   return mobile;
 }
 
-export function ExpensePieChart({ transactions }: ExpensePieChartProps) {
+export function ExpensePieChart({ transactions, showAmounts = true }: ExpensePieChartProps) {
   const isMobile = useIsMobile();
   const [expanded, setExpanded] = useState(false);
   const expenseOnly = transactions.filter((t) => t.type === "expense");
@@ -76,7 +77,7 @@ export function ExpensePieChart({ transactions }: ExpensePieChartProps) {
               ))}
             </Pie>
             <Tooltip 
-              formatter={(value: number) => formatCurrency(value)}
+              formatter={(value: number) => showAmounts ? formatCurrency(value) : "Rp ******"}
               contentStyle={{ 
                 backgroundColor: 'rgba(255, 255, 255, 0.9)', 
                 borderRadius: '16px', 
@@ -93,7 +94,7 @@ export function ExpensePieChart({ transactions }: ExpensePieChartProps) {
         <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
           <span className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-400">Total</span>
           <span className="text-sm font-black text-slate-900 dark:text-white mt-1">
-             {totalExpense >= 1000000 ? `${(totalExpense / 1000000).toFixed(1)}jt` : formatCurrency(totalExpense).replace("Rp ", "")}
+             {!showAmounts ? "******" : (totalExpense >= 1000000 ? `${(totalExpense / 1000000).toFixed(1)}jt` : formatCurrency(totalExpense).replace("Rp ", ""))}
           </span>
         </div>
       </div>
@@ -112,7 +113,7 @@ export function ExpensePieChart({ transactions }: ExpensePieChartProps) {
                    <span className="text-slate-600 dark:text-slate-300">{item.name}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-slate-400">{formatCurrency(item.value)}</span>
+                  <span className="text-slate-400">{showAmounts ? formatCurrency(item.value) : "Rp ******"}</span>
                   <span className="text-primary">{pct.toFixed(0)}%</span>
                 </div>
               </div>
@@ -145,7 +146,7 @@ export function ExpensePieChart({ transactions }: ExpensePieChartProps) {
                    <svg className={`h-3 w-3 transition-transform duration-300 ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M19 9l-7 7-7-7" /></svg>
                 </div>
                 <div className="flex items-center gap-2 border-b border-dashed border-slate-200 dark:border-slate-700 pb-0.5">
-                  <span className="text-slate-400">{formatCurrency(othersTotal)}</span>
+                  <span className="text-slate-400">{showAmounts ? formatCurrency(othersTotal) : "Rp ******"}</span>
                   <span className="text-primary/70">{othersPct.toFixed(0)}%</span>
                 </div>
               </button>
@@ -168,7 +169,7 @@ export function ExpensePieChart({ transactions }: ExpensePieChartProps) {
                         <div className="flex items-center justify-between text-[9px] font-bold uppercase tracking-widest px-1">
                           <span className="text-slate-500">{item.name}</span>
                           <div className="flex items-center gap-2">
-                            <span className="text-slate-400">{formatCurrency(item.value)}</span>
+                            <span className="text-slate-400">{showAmounts ? formatCurrency(item.value) : "Rp ******"}</span>
                             <span className="text-slate-500">{subPct.toFixed(0)}%</span>
                           </div>
                         </div>

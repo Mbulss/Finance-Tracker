@@ -103,22 +103,15 @@ Tips agar hasil lebih akurat:
     id: "tabungan",
     question: "Apa itu Tabungan dan cara pakainya?",
     icon: "🐷",
-    category: "Fitur",
     answer: `• Saldo di atas = total uang tabungan kamu (setor minus tarik).
 
 • Celengan = bagi per tujuan: Umum, Dana darurat, Liburan, dll. Kamu bisa set target per celengan dan lihat progresnya.
 
 • Setor / Tarik = catat setoran atau penarikan uang ke/dari tabungan. Pindahkan uang = pindah antar celengan (mis. dari Umum ke Dana darurat) tanpa tarik dulu — saldo total tetap sama.
 
-• Di Telegram (kalau akun sudah di-link): /tabungan untuk cek saldo, setor 100rb atau tarik 50k untuk setor/tarik. Pengingat setor bisa dikirim ke Telegram tiap hari yang kamu pilih (atur di halaman Tabungan).`,
+• Di Telegram (kalau akun sudah di-link): /tabungan untuk cek saldo, setor 100rb atau tarik 50k untuk setor/tarik.`,
   },
-  {
-    id: "pengingat",
-    question: "Bagaimana cara menyalakan notifikasi pengingat?",
-    icon: "⏰",
-    category: "Fitur",
-    answer: "Kamu bisa mengatur pengingat untuk mencatat keuangan atau setor tabungan di halaman Tabungan. Pilih hari apa saja kamu ingin diingatkan, dan bot Telegram akan mengirimkan pesan otomatis ke akunmu pada hari tersebut. Pastikan akun Telegram sudah terhubung ya!",
-  },
+
   {
     id: "keamanan",
     question: "Apakah data saya aman dan di mana disimpan?",

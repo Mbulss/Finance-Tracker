@@ -8,18 +8,31 @@ const EXPENSE_KEYWORDS: Record<string, string[]> = {
     "kopi", "ngopi", "makan", "makanan", "food", "restaurant", "warung", "coffee", "lunch", "dinner", "snack",
     "sarapan", "jajan", "kuliner", "gofood", "grabfood", "traveloka eats", "minuman", "cemilan",
     "mixue", "kopikenangan", "janjijiwa", "starbucks", "mcdonalds", "kfc", "hokben", "solaria", "fore", "chatime", "dum dum",
+    "keprabon", "nasi goreng", "mie goreng", "bakso", "mie ayam", "sate", "martabak", "bebek", "steak", "soto", "rawon", "pecel", 
+    "padang", "warteg", "kantin", "food court", "shopeefood", "chateraise", "breadtalk", "jco", "rotio", "holland bakery", "mako", "sour sally", "llaollao", "yoshinoya", "marugame", "sushitei", "ichiban", "pepper lunch", "imperial kitchen", "ta wan", "din tai fung", "shihlin"
   ],
   Transport: [
     "bensin", "transport", "grab", "gojek", "ojek", "taxi", "parkir", "tol", "gas", "angkot",
     "transjakarta", "krl", "tiket", "toll", "spbu", "pertamina", "shell", "total", "kai", "bluebird",
+    "e-money", "emoney", "maxim", "indrive", "garuda", "citilink", "lion air", "traveloka", "pegipegi", "damri"
   ],
   Shopping: [
     "belanja", "shopping", "market", "mall", "tokopedia", "shopee", "lazada", "toko",
     "indomaret", "alfamart", "alfamidi", "hypermart", "superindo", "miniso", "guardian", "watson", "grandlucky",
+    "supermarket", "minimarket", "fashion", "baju", "celana", "sepatu", "uniqlo", "h&m", "zara", "ikea", "ace hardware", "informas", "gramedia", "eiger"
   ],
-  Bills: ["listrik", "internet", "pulsa", "bills", "tagihan", "pln", "wifi", "bpjs", "pdam", "netflix", "spotify"],
-  Health: ["obat", "dokter", "health", "apotek", "klinik", "rumah sakit", "medical", "vitamin"],
-  Entertainment: ["nonton", "game", "entertainment", "hobi", "bioskop", "streaming", "youtube", "premium", "langganan"],
+  Bills: [
+    "listrik", "internet", "pulsa", "bills", "tagihan", "pln", "wifi", "bpjs", "pdam", "netflix", "spotify",
+    "pajak", "asuransi", "ipp", "spp", "kost", "kontrakan", "cicilan", "kartu kredit", "paylater", "kredivo", "atome", "spaylater"
+  ],
+  Health: [
+    "obat", "dokter", "health", "apotek", "klinik", "rumah sakit", "medical", "vitamin",
+    "halodoc", "alodokter", "gym", "fitness", "masker", "dentist", "gigi"
+  ],
+  Entertainment: [
+    "nonton", "game", "entertainment", "hobi", "bioskop", "streaming", "youtube", "premium", "langganan",
+    "steam", "psn", "nintendo", "xbox", "codashop", "unipin", "top up game", "voucher", "karaoke", "dufan"
+  ],
   Other: [],
 };
 

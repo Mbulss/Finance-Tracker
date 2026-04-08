@@ -8,6 +8,7 @@ interface SummaryCardsProps {
   transactions: any[]; // Menggunakan any[] untuk fleksibilitas tipe Transaction
   savingsEntries: { amount: number; type: "deposit" | "withdraw"; created_at: string }[];
   monthFilter: string;
+  showAmounts?: boolean;
 }
 
 function sumByType(items: any[], type: string) {
@@ -23,7 +24,7 @@ function getPrevMonthKey(monthKey: string): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
-export function SummaryCards({ transactions, savingsEntries, monthFilter }: SummaryCardsProps) {
+export function SummaryCards({ transactions, savingsEntries, monthFilter, showAmounts = true }: SummaryCardsProps) {
   const isAllTime = monthFilter === "all";
   const current = isAllTime
     ? transactions
@@ -76,7 +77,11 @@ export function SummaryCards({ transactions, savingsEntries, monthFilter }: Summ
           </div>
           <div>
             <h3 className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white tabular-nums">
-              <CountUp value={netWorth} formatter={(n) => formatCurrency(n)} />
+              {showAmounts ? (
+                <CountUp value={netWorth} formatter={(n) => formatCurrency(n)} />
+              ) : (
+                <span>Rp ******</span>
+              )}
             </h3>
             <p className="mt-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Saldo + Celengan</p>
           </div>
@@ -95,7 +100,11 @@ export function SummaryCards({ transactions, savingsEntries, monthFilter }: Summ
           </div>
           <div>
             <h3 className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white tabular-nums">
-              <CountUp value={balance} formatter={(n) => formatCurrency(n)} />
+              {showAmounts ? (
+                <CountUp value={balance} formatter={(n) => formatCurrency(n)} />
+              ) : (
+                <span>Rp ******</span>
+              )}
             </h3>
             <p className="mt-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Saldo Kumulatif (Carry-over)</p>
           </div>
@@ -114,7 +123,11 @@ export function SummaryCards({ transactions, savingsEntries, monthFilter }: Summ
           </div>
           <div>
             <h3 className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white tabular-nums">
-              <CountUp value={income} formatter={(n) => formatCurrency(n)} />
+              {showAmounts ? (
+                <CountUp value={income} formatter={(n) => formatCurrency(n)} />
+              ) : (
+                <span>Rp ******</span>
+              )}
             </h3>
             {prevIncome > 0 && (
               <p className={`mt-1 text-[10px] font-bold uppercase tracking-widest ${incomeDiff >= 0 ? "text-income" : "text-expense"}`}>
@@ -137,7 +150,11 @@ export function SummaryCards({ transactions, savingsEntries, monthFilter }: Summ
           </div>
           <div>
             <h3 className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white tabular-nums">
-              <CountUp value={expense} formatter={(n) => formatCurrency(n)} />
+              {showAmounts ? (
+                <CountUp value={expense} formatter={(n) => formatCurrency(n)} />
+              ) : (
+                <span>Rp ******</span>
+              )}
             </h3>
             {prevExpense > 0 && (
               <p className={`mt-1 text-[10px] font-bold uppercase tracking-widest ${expenseDiff <= 0 ? "text-income" : "text-expense"}`}>

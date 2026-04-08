@@ -17,9 +17,10 @@ interface MonthlyBarChartProps {
   transactions: Transaction[];
   /** Jika true, tampilkan semua bulan (untuk mode "Semua waktu"). Jika false, 6 bulan terakhir. */
   showAllMonths?: boolean;
+  showAmounts?: boolean;
 }
 
-export function MonthlyBarChart({ transactions, showAllMonths = false }: MonthlyBarChartProps) {
+export function MonthlyBarChart({ transactions, showAllMonths = false, showAmounts = true }: MonthlyBarChartProps) {
   const byMonth = transactions.reduce<
     Record<string, { month: string; income: number; expense: number }>
   >((acc, t) => {
@@ -56,11 +57,14 @@ export function MonthlyBarChart({ transactions, showAllMonths = false }: Monthly
           <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
           <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#94a3b8" />
           <YAxis
-            tickFormatter={(v) => (v >= 1e6 ? `${(v / 1e6).toFixed(0)}jt` : `${(v / 1e3).toFixed(0)}k`)}
+            tickFormatter={(v) => {
+              if (!showAmounts) return "****";
+              return (v >= 1e6 ? `${(v / 1e6).toFixed(0)}jt` : `${(v / 1e3).toFixed(0)}k`);
+            }}
             tick={{ fontSize: 12 }}
             stroke="#94a3b8"
           />
-          <Tooltip formatter={(value: number) => formatCurrency(value)} />
+          <Tooltip formatter={(value: number) => showAmounts ? formatCurrency(value) : "Rp ******"} />
           <Legend />
           <Bar dataKey="income" fill="#059669" name="Pemasukan" radius={[4, 4, 0, 0]} />
           <Bar dataKey="expense" fill="#dc2626" name="Pengeluaran" radius={[4, 4, 0, 0]} />

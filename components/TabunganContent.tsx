@@ -38,11 +38,7 @@ export interface SavingsPot {
   description?: string | null;
 }
 
-interface SavingsReminder {
-  user_id: string;
-  enabled: boolean;
-  day_of_week: number;
-}
+
 
 const DAY_NAMES = ["Minggu", "Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu"];
 
@@ -129,7 +125,7 @@ interface TabunganContentProps {
 export function TabunganContent({ userId, initialTelegramLinked = false }: TabunganContentProps) {
   const [entries, setEntries] = useState<SavingsEntry[]>([]);
   const [pots, setPots] = useState<SavingsPot[]>([]);
-  const [reminder, setReminder] = useState<SavingsReminder | null>(null);
+
   const [loading, setLoading] = useState(true);
   const [type, setType] = useState<"deposit" | "withdraw">("deposit");
   const [selectedPotId, setSelectedPotId] = useState<string | null>(null);
@@ -165,6 +161,20 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
   const [isTelegramLinked, setIsTelegramLinked] = useState<boolean>(initialTelegramLinked);
   const supabase = createClient();
   const { showToast } = useToast();
+  const [showAmounts, setShowAmounts] = useState(true);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("dashboard_show_amounts");
+    if (saved !== null) {
+      setShowAmounts(saved === "true");
+    }
+  }, []);
+
+  const toggleShowAmounts = () => {
+    const newVal = !showAmounts;
+    setShowAmounts(newVal);
+    localStorage.setItem("dashboard_show_amounts", String(newVal));
+  };
 
 
   const RIWAYAT_PAGE_SIZE = 15;
@@ -226,22 +236,13 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
     } catch { /* ignore */ }
   }, []);
 
-  const fetchReminder = useCallback(async () => {
-    const { data } = await supabase
-      .from("savings_reminders")
-      .select("*")
-      .eq("user_id", userId)
-      .single();
-    if (data) setReminder(data as SavingsReminder);
-    else setReminder({ user_id: userId, enabled: false, day_of_week: 1 });
-  }, [supabase, userId]);
+
 
   useEffect(() => {
     let cancelled = false;
     Promise.all([
       fetchEntries(),
       fetchPots().catch(() => setPots([])),
-      fetchReminder().catch(() => setReminder({ user_id: userId, enabled: false, day_of_week: 1 })),
       fetchProfile().catch(() => setIsTelegramLinked(false)),
     ]).then(() => {
       if (!cancelled) setLoading(false);
@@ -287,7 +288,7 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
       supabase.removeChannel(channelProfile);
       if (pollTimer) clearInterval(pollTimer);
     };
-  }, [fetchEntries, fetchPots, fetchReminder, fetchProfile, supabase, userId, isTelegramLinked]);
+  }, [fetchEntries, fetchPots, fetchProfile, supabase, userId, isTelegramLinked]);
 
   useEffect(() => {
     if (pots.length > 0 && !transferTo) setTransferTo(pots[0].id);
@@ -496,17 +497,8 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
     );
   }
 
-  const showReminderBanner = reminder?.enabled && reminder.day_of_week === new Date().getDay();
-
   return (
     <div className="space-y-6">
-      {showReminderBanner && (
-        <div className="rounded-xl border border-primary/30 bg-primary/10 dark:bg-primary/20 px-4 py-3 text-sm text-slate-800 dark:text-slate-200 flex items-center gap-2">
-          <svg className="h-5 w-5 text-primary shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-          <span><strong>Pengingat setor:</strong> Jangan lupa setor tabungan hari ini. Kamu juga dapat pesan di Telegram kalau akun sudah di-link.</span>
-        </div>
-      )}
-
       {/* Overview Section: Stats + Distribution Chart */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 lg:items-stretch">
         <div className="lg:col-span-8 flex flex-col gap-4 h-full">
@@ -515,22 +507,38 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
             <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/20 dark:bg-primary/30 blur-[100px] pointer-events-none transition-transform group-hover:scale-110" aria-hidden />
             <div className="absolute -left-20 -bottom-20 h-48 w-48 rounded-full bg-primary/10 dark:bg-primary/20 blur-[80px] pointer-events-none transition-transform group-hover:scale-110" aria-hidden />
             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-50 pointer-events-none" />
-            <div className="relative flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="relative flex flex-row items-center justify-between gap-3 sm:gap-4">
               <div className="flex-1 min-w-0">
                 <p className="text-[10px] sm:text-sm font-bold uppercase tracking-[0.15em] text-primary/80 dark:text-sky-400/80">Total Saldo Tabungan</p>
-                <div className={`mt-1 sm:mt-2 flex items-baseline gap-2 text-2xl sm:text-4xl lg:text-5xl font-black tabular-nums tracking-tighter break-words ${totalBalance >= 0 ? "text-slate-900 dark:text-white" : "text-expense"}`}>
-                  <CountUp value={totalBalance} formatter={(n) => formatCurrency(n)} />
+                <div className={`mt-1 sm:mt-2 flex items-baseline gap-1.5 text-[22px] sm:text-4xl lg:text-5xl font-black tabular-nums tracking-tighter break-words ${totalBalance >= 0 ? "text-slate-900 dark:text-white" : "text-expense"}`}>
+                  {showAmounts ? (
+                    <CountUp value={totalBalance} formatter={(n) => formatCurrency(n)} />
+                  ) : (
+                    <span>Rp ******</span>
+                  )}
                 </div>
                 <p className="mt-2 text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400 flex items-center gap-1.5 opacity-90">
                   <span className="inline-flex h-2 w-2 rounded-full bg-primary" />
                   Seluruh tabungan di semua celengan
                 </p>
               </div>
-              <div className="hidden xs:flex h-12 w-12 sm:h-16 sm:w-16 shrink-0 items-center justify-center rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 shadow-soft ring-1 ring-black/5 dark:ring-white/5">
-                <svg className="h-6 w-6 sm:h-8 sm:w-8 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
+              <button
+                type="button"
+                onClick={toggleShowAmounts}
+                className="flex h-10 w-10 sm:h-16 sm:w-16 shrink-0 items-center justify-center rounded-xl sm:rounded-2xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border border-white/20 dark:border-slate-700/50 shadow-soft ring-1 ring-black/5 dark:ring-white/5 text-primary hover:text-primary-hover hover:scale-105 active:scale-95 transition-all"
+                title={showAmounts ? "Hide" : "Unhide"}
+              >
+                {showAmounts ? (
+                  <svg className="h-5 w-5 sm:h-8 sm:w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                ) : (
+                  <svg className="h-5 w-5 sm:h-8 sm:w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.542-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                  </svg>
+                )}
+              </button>
             </div>
           </section>
 
@@ -541,7 +549,11 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold uppercase tracking-wider text-muted dark:text-slate-400">Total Setor</p>
                   <p className="mt-1 text-lg sm:text-2xl font-black tabular-nums text-income break-words leading-tight">
-                    <CountUp value={totalSetor} formatter={(n) => formatCurrency(n)} />
+                    {showAmounts ? (
+                      <CountUp value={totalSetor} formatter={(n) => formatCurrency(n)} />
+                    ) : (
+                      <span>Rp ******</span>
+                    )}
                   </p>
                 </div>
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-income/10 text-income ring-1 ring-income/20">
@@ -558,7 +570,11 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold uppercase tracking-wider text-muted dark:text-slate-400">Total Tarik</p>
                   <p className="mt-1 text-lg sm:text-2xl font-black tabular-nums text-expense break-words leading-tight">
-                    <CountUp value={totalTarik} formatter={(n) => formatCurrency(n)} />
+                    {showAmounts ? (
+                      <CountUp value={totalTarik} formatter={(n) => formatCurrency(n)} />
+                    ) : (
+                      <span>Rp ******</span>
+                    )}
                   </p>
                 </div>
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-expense/10 text-expense ring-1 ring-expense/20">
@@ -612,7 +628,7 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
                       fontWeight: "bold",
                       color: "#1e293b"
                     }}
-                    formatter={(value: number) => formatCurrency(value)}
+                    formatter={(value: number) => showAmounts ? formatCurrency(value) : "Rp ******"}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -636,7 +652,7 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
                 <div key={i} className="flex items-center gap-2 min-w-0 group/item transition-all hover:translate-x-1">
                   <div className="h-2 w-2 rounded-full shrink-0 shadow-[0_0_8px_rgba(0,0,0,0.1)]" style={{ backgroundColor: item.color }} />
                   <span className="text-[9px] sm:text-[10px] font-black text-slate-500 dark:text-slate-400 truncate uppercase tracking-tighter leading-none">
-                    {item.name}: {((item.val / totalBalance) * 100).toFixed(0)}%
+                    {item.name}: {showAmounts ? formatCurrency(item.val) : "Rp ******"} ({((item.val / totalBalance) * 100).toFixed(0)}%)
                   </span>
                 </div>
               ))}
@@ -650,19 +666,21 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
         <div className="absolute inset-0 overflow-hidden rounded-[2.5rem] pointer-events-none">
           <div className="absolute -top-32 -left-32 w-80 h-80 bg-primary/5 rounded-full blur-[100px] opacity-50 transition-transform group-hover:scale-125" />
         </div>
-        <div className="flex items-center justify-between mb-6 relative z-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 relative z-10 gap-4">
           <div className="flex flex-col">
             <h2 className="text-xl font-black tracking-tight text-slate-900 dark:text-white sm:text-2xl uppercase tracking-tighter">Celengan</h2>
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mt-1 uppercase tracking-widest">Tempat menabung untuk mimpi-mimpimu</p>
           </div>
-          <button
-            type="button"
-            onClick={() => setAddingPot(true)}
-            className="group flex items-center gap-2 rounded-2xl bg-primary/10 dark:bg-primary/20 px-4 py-2 text-sm font-bold text-primary transition-all hover:bg-primary hover:text-white"
-          >
-            <span className="text-lg transition-transform group-hover:rotate-90">+</span>
-            Tambah
-          </button>
+          <div className="flex items-center gap-3">
+             <button
+              type="button"
+              onClick={() => setAddingPot(true)}
+              className="group flex items-center gap-2 rounded-2xl bg-primary/10 dark:bg-primary/20 px-4 py-2 h-11 text-sm font-bold text-primary transition-all hover:bg-primary hover:text-white"
+            >
+              <span className="text-lg transition-transform group-hover:rotate-90">+</span>
+              Tambah
+            </button>
+          </div>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div
@@ -686,7 +704,7 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
               </div>
               <div className="flex items-baseline gap-1 mt-auto">
                 <span className={`text-xl font-black tabular-nums ${(balanceByPot["__umum__"] ?? 0) >= 0 ? "text-income" : "text-expense"}`}>
-                  {formatCurrency(balanceByPot["__umum__"] ?? 0)}
+                  {showAmounts ? formatCurrency(balanceByPot["__umum__"] ?? 0) : "Rp ******"}
                 </span>
               </div>
             </div>
@@ -748,14 +766,14 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
                     <h3 className="font-bold text-slate-900 dark:text-white truncate">{pot.name}</h3>
                     {pot.description && <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1 italic">{pot.description}</p>}
                     <p className={`mt-2 text-xl font-black tabular-nums ${bal >= 0 ? "text-income" : "text-expense"}`}>
-                      {formatCurrency(bal)}
+                      {showAmounts ? formatCurrency(bal) : "Rp ******"}
                     </p>
                   </div>
                   {target != null && target > 0 && (
                     <div className="mt-auto pt-2">
                        <div className="flex justify-between items-center mb-1.5 px-0.5">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Progres: {pct?.toFixed(0)}%</span>
-                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Target: {formatCurrency(target)}</span>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Target: {showAmounts ? formatCurrency(target) : "Rp ******"}</span>
                       </div>
                       <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-700 overflow-hidden shadow-inner">
                         <div 
@@ -1229,78 +1247,7 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
         </div>
       </section>
 
-      {/* Pengingat setor */}
-      {reminder && (
-        <section className="group relative overflow-hidden rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white dark:bg-slate-900 p-6 shadow-xl transition-all hover:shadow-2xl">
-          <div className="absolute right-0 top-0 h-48 w-48 translate-x-12 -translate-y-12 rounded-full bg-primary/10 blur-[80px] pointer-events-none group-hover:scale-110 transition-transform" />
-          <div className="absolute left-0 bottom-0 h-32 w-32 -translate-x-8 translate-y-8 rounded-full bg-emerald-500/5 blur-[60px] pointer-events-none group-hover:scale-110 transition-transform" />
-          <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="space-y-2 max-w-2xl">
-              <div className="flex items-center gap-2">
-                <svg className="h-6 w-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" /></svg>
-                <h2 className="text-lg font-black text-slate-800 dark:text-white uppercase tracking-tighter">Pengingat Setor</h2>
-              </div>
-              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed">
-                Aktifkan pengingat otomatis ke Telegram agar tabunganmu terus tumbuh. Kami akan mengirimkan ringkasan saldo dan ajakan setor pada hari yang kamu tentukan.
-              </p>
-            </div>
-            
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              {!isTelegramLinked ? (
-                <div className="flex flex-col sm:flex-row items-center gap-3">
-                   <div className="flex items-center gap-2 px-4 py-3 rounded-2xl bg-orange-100/50 dark:bg-orange-500/10 border border-orange-200 dark:border-orange-500/20 text-orange-600 dark:text-orange-400 text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
-                      <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-                      Belum Terhubung
-                   </div>
-                   <a 
-                    href="/link-telegram" 
-                    className="flex items-center justify-center gap-2 px-6 py-3.5 rounded-2xl bg-[#24A1DE] text-white text-[10px] font-black uppercase tracking-[0.2em] shadow-lg shadow-sky-500/20 hover:scale-[1.05] active:scale-95 transition-all text-center"
-                   >
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0zM17.8 8.16l-1.9 8.93c-.14.64-.52.8-.2.25l-2.9-2.14-1.4 1.35c-.15.15-.28.28-.57.28l.2-2.94 5.36-4.84c.23-.2-.05-.31-.35-.11l-6.63 4.17-2.85-.89c-.62-.2-.63-.62.13-.91l11.12-4.29c.51-.19.96.11.7.9l.2.49z" /></svg>
-                    LINK TELEGRAM
-                   </a>
-                </div>
-              ) : (
-                <div className="w-full lg:w-auto flex flex-col lg:flex-row items-stretch lg:items-center gap-2 lg:gap-0 p-1.5 lg:p-2 rounded-[2rem] lg:rounded-2xl bg-slate-50 dark:bg-slate-900/50 border border-border/20">
-                  <label className="flex-1 lg:flex-none relative inline-flex items-center justify-between lg:justify-start cursor-pointer group/toggle px-4 lg:px-5 py-3 lg:py-2.5 rounded-2xl lg:rounded-xl hover:bg-white dark:hover:bg-slate-800 transition-all">
-                    <input
-                      type="checkbox"
-                      checked={reminder.enabled}
-                      onChange={async (e) => {
-                        const enabled = e.target.checked;
-                        setReminder((r) => r ? { ...r, enabled } : { user_id: userId, enabled, day_of_week: 1 });
-                        const { error: err } = await supabase.from("savings_reminders").upsert({ user_id: userId, enabled, day_of_week: reminder?.day_of_week ?? 1, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
-                        if (!err) showToast(enabled ? "Pengingat diaktifkan" : "Pengingat dimatikan");
-                      }}
-                      className="sr-only peer"
-                    />
-                    <div className="relative w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary" />
-                    <span className="ml-4 text-[10px] lg:text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400 group-hover:text-primary transition-colors whitespace-nowrap">Pengingat {reminder.enabled ? "Aktif" : "Mati"}</span>
-                  </label>
 
-                  {reminder.enabled && (
-                    <div className="flex-1 lg:flex-none flex items-center justify-between lg:justify-start gap-4 border-t lg:border-t-0 lg:border-l border-border/20 dark:border-slate-700 mt-1 lg:mt-0 pt-3 lg:pt-0 pb-1.5 lg:pb-0 px-4 lg:pl-8 lg:pr-4">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 whitespace-nowrap">Setiap Hari</span>
-                      <SelectDropdown
-                        value={String(reminder.day_of_week)}
-                        onChange={(v) => {
-                          const day = Number(v);
-                          setReminder((r) => r ? { ...r, day_of_week: day } : null);
-                          supabase.from("savings_reminders").upsert({ user_id: userId, enabled: true, day_of_week: day, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
-                        }}
-                        options={DAY_NAMES.map((name, i) => ({ value: String(i), label: name.toUpperCase() }))}
-                        placeholder="Hari"
-                        buttonClassName="!border-none !bg-transparent !shadow-none hover:!bg-slate-200/50 dark:hover:!bg-slate-800/50 !min-w-[120px] !h-10"
-                        hideAllOption={true}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* Riwayat */}
       <section className="group relative overflow-hidden rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-8 shadow-2xl transition-all hover:shadow-primary/5 animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.25s" }}>
@@ -1374,7 +1321,7 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
                             </td>
                             <td className="px-3 sm:px-4 py-4 tabular-nums font-black text-sm whitespace-nowrap">
                               <span className={entry.type === "deposit" ? "text-green-600 dark:text-income" : "text-red-600 dark:text-expense"}>
-                                {entry.type === "deposit" ? "+" : "-"} {formatCurrency(Number(entry.amount))}
+                                {entry.type === "deposit" ? "+" : "-"} {showAmounts ? formatCurrency(Number(entry.amount)) : "Rp ******"}
                               </span>
                             </td>
                             <td className="px-3 sm:px-4 py-4 hidden md:table-cell">
@@ -1491,7 +1438,7 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
           {deletingEntry && (
             <div className="rounded-xl border border-border dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50 px-4 py-3">
               <p className="text-sm font-medium text-slate-700 dark:text-slate-200 uppercase tracking-tight">
-                {deletingEntry.type === "deposit" ? "Setoran" : "Penarikan"} — {formatCurrency(deletingEntry.amount)}
+                {deletingEntry.type === "deposit" ? "Setoran" : "Penarikan"} — {showAmounts ? formatCurrency(deletingEntry.amount) : "Rp ******"}
               </p>
               {deletingEntry.note && (
                 <p className="mt-0.5 text-sm text-muted dark:text-slate-400 italic">

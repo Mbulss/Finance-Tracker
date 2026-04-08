@@ -13,7 +13,7 @@ Aplikasi **pencatat keuangan pribadi** yang modern: catat pemasukan & pengeluara
 | **Tambah dari foto (AI)** | Upload foto struk atau bukti transfer; AI baca nominal, kategori, dan nama toko/item lalu mengisi form. Cukup cek dan simpan. |
 | **Edit & hapus** | Setiap transaksi bisa diedit atau dihapus dari tabel di dashboard. |
 | **Tabungan (Celengan)** | Fitur tabungan terpisah: buat banyak celengan (Umum, Dana darurat, Liburan, dll), set target per celengan, setor/tarik, pindah uang antar celengan. Riwayat setor/tarik, edit entri, dan ringkasan total setor/tarik. Opsional: foto & deskripsi per celengan. |
-| **Pengingat setor** | Jadwalkan pengingat setor tabungan ke Telegram per hari (misalnya setiap Senin). |
+
 | **Telegram bot** | Kirim pesan seperti `+500000 gaji` atau `-25rb kopi` untuk catat transaksi; `/tabungan` cek saldo; `setor 100k` / `tarik 50k` untuk tabungan. Setelah akun di-link, bot pakai data kamu. |
 | **Link Telegram** | Multi-user: setiap user daftar di web, lalu hubungkan akun dengan bot lewat kode (menu Link Telegram). |
 | **Cike AI (chatbot)** | Asisten keuangan di dalam app: tanya ringkasan, tips, cara export, dll. Fokus konteks keuangan & aplikasi saja. |
@@ -61,7 +61,7 @@ npm install
 2. Buka **SQL Editor** dan jalankan script berikut **berurutan**:
    - **`supabase/schema.sql`** — tabel transaksi, auth, link Telegram.
    - **`supabase/schema-tabungan.sql`** — tabel tabungan (entri setor/tarik).
-   - **`supabase/schema-tabungan-pots.sql`** — celengan, target, pengingat, foto/deskripsi.
+   - **`supabase/schema-tabungan-pots.sql`** — celengan, target, foto/deskripsi.
 3. (Opsional) **Realtime**: Database → Replication → aktifkan untuk `transactions`, `savings_entries`, `savings_pots` agar dashboard update live.
 4. **URL & redirect (penting untuk email)**  
    Supabase Dashboard → **Authentication → URL Configuration**:
@@ -89,7 +89,7 @@ Isi di `.env.local`:
 | `TELEGRAM_BOT_TOKEN` | ✅ | Token dari @BotFather |
 | `NEXT_PUBLIC_APP_URL` | Disarankan (production) | URL app tanpa trailing slash, untuk redirect auth (mis. `https://your-app.vercel.app`) |
 | `TELEGRAM_SET_WEBHOOK_SECRET` | Opsional | Rahasia untuk endpoint set-webhook (agar hanya kamu yang bisa panggil) |
-| `CRON_SECRET` | Opsional | Untuk cron ringkasan mingguan & pengingat setor (set di Vercel) |
+| `CRON_SECRET` | Opsional | Untuk cron ringkasan mingguan (set di Vercel) |
 | `GEMINI_API_KEY` | Opsional* | AI parsing struk & chatbot (prioritas 1) |
 | `GROQ_API_KEY` | Opsional* | Fallback AI (prioritas 2) |
 | `OPENROUTER_API_KEY` | Opsional* | Fallback AI (prioritas 3) |
@@ -130,14 +130,12 @@ curl -X POST "https://api.telegram.org/bot<BOT_TOKEN>/setWebhook?url=https://<DO
 - **Ringkasan mingguan**  
   Vercel cron memanggil `/api/cron/weekly-summary` (jadwal default: Senin 08:00 UTC). Set env `CRON_SECRET` di Vercel; request otomatis pakai header `Authorization: Bearer <CRON_SECRET>`.
 
-- **Pengingat setor tabungan**  
-  Cron harian memanggil `/api/cron/savings-reminder` (default 02:00 UTC). User yang mengaktifkan pengingat di halaman Tabungan akan dapat pesan di Telegram di hari yang dipilih.
+
 
 Tes manual (ganti URL & secret):
 
 ```bash
 curl -H "Authorization: Bearer <CRON_SECRET>" "https://<domain-kamu>/api/cron/weekly-summary"
-curl -H "Authorization: Bearer <CRON_SECRET>" "https://<domain-kamu>/api/cron/savings-reminder"
 ```
 
 ---
@@ -156,7 +154,7 @@ curl -H "Authorization: Bearer <CRON_SECRET>" "https://<domain-kamu>/api/cron/sa
 ├── app/
 │   ├── api/
 │   │   ├── chat/              # Cike AI chatbot
-│   │   ├── cron/               # weekly-summary, savings-reminder
+│   │   ├── cron/               # weekly-summary
 │   │   ├── parse-receipt/     # AI baca foto struk
 │   │   └── telegram/           # webhook, set-webhook, link-code
 │   ├── auth/                   # Login, signup, update-password
