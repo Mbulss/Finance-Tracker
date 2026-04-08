@@ -25,9 +25,18 @@ function findLineValue(text: string, label: RegExp): string {
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const m = line.match(label);
+    
+    // Case 1: Value is on the same line as the label (e.g. "Amount: 10.000")
     if (m?.[1]) return m[1].trim();
+    
+    // Case 2: Label matches the line exactly, value might be 1 or 2 lines below
     if (label.test(line)) {
-      const next = lines[i + 1]?.trim();
+      // Check next line
+      let next = lines[i + 1]?.trim();
+      if (next === ":") {
+        // BCA special: colon is on its own line, value is on the NEXT next line
+        next = lines[i + 2]?.trim();
+      }
       if (next) return next;
     }
   }
@@ -173,20 +182,32 @@ function parseBCA(textRaw: string): ParsedBankEmail | null {
   const text = normText(textRaw);
   if (!text) return null;
 
-  const amountLine = findLineValue(text, /Total\s+Payment\s*(?:[:\s]+)?(.+)/i);
-  const amount = ensureReasonableAmount(parseIDRAmount(amountLine));
+  // BCA labels - using findLineValue which now handles multi-line colons
+  const amountStr = findLineValue(text, /Transfer\s+Amount/i)
+    || findLineValue(text, /Amount/i)
+    || findLineValue(text, /Total\s+Payment/i);
+  
+  const amount = ensureReasonableAmount(parseIDRAmount(amountStr));
 
-  const dateTime = findLineValue(text, /Transaction\s+Date\s*(?:[:\s]+)?(\d{1,2}\s+[A-Za-z]+\s+\d{4}\s+\d{2}:\d{2}:\d{2})/i);
-  const dtm = dateTime.match(/^(\d{1,2}\s+[A-Za-z]+\s+\d{4})\s+(\d{2}:\d{2}:\d{2})$/);
+  const dateStr = findLineValue(text, /Transaction\s+Date/i);
+  const dtm = dateStr.match(/(\d{1,2})\s+([A-Za-z]+)\s+(\d{4})\s+(\d{2}:\d{2}:\d{2})/);
+  
   let occurredAtISO = "";
   if (dtm) {
-    try { occurredAtISO = parseDateTimeWIB(dtm[1], dtm[2]); } catch { occurredAtISO = ""; }
+    try { 
+      occurredAtISO = parseDateTimeWIB(`${dtm[1]} ${dtm[2]} ${dtm[3]}`, dtm[4]); 
+    } catch { occurredAtISO = ""; }
   }
 
-  const merchantName = findLineValue(text, /Payment\s+to\s*(?:[:\s]+)?(.+)/i);
-  const merchantLocation = findLineValue(text, /Merchant\s+Location\s*(?:[:\s]+)?(.+)/i);
-  const referenceId = findLineValue(text, /Reference\s+No\.?\s*(?:[:\s]+)?([0-9A-Za-z]+)/i) || findLineValue(text, /\bRRN\s*(?:[:\s]+)?([0-9A-Za-z]+)/i);
-  const qrisRef = findLineValue(text, /QRIS\s*Ref(?:erence)?\s*(?:No\.?)?\s*(?:[:\s]+)?([0-9A-Za-z]+)/i);
+  const merchantName = findLineValue(text, /Beneficiary\s+Name/i)
+    || findLineValue(text, /Payment\s+to/i);
+  
+  const merchantLocation = findLineValue(text, /Merchant\s+Location/i);
+  
+  const referenceId = findLineValue(text, /Reference\s+No/i) 
+    || findLineValue(text, /\bRRN\b/i);
+    
+  const qrisRef = findLineValue(text, /QRIS\s*Ref/i);
 
   if (!amount || !occurredAtISO || !merchantName) return null;
 

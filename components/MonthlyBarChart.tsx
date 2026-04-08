@@ -51,25 +51,50 @@ export function MonthlyBarChart({ transactions, showAllMonths = false, showAmoun
   }
 
   return (
-    <div className="h-[260px] min-h-[220px] sm:h-[280px]">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-          <XAxis dataKey="month" tick={{ fontSize: 12 }} stroke="#94a3b8" />
-          <YAxis
-            tickFormatter={(v) => {
-              if (!showAmounts) return "****";
-              return (v >= 1e6 ? `${(v / 1e6).toFixed(0)}jt` : `${(v / 1e3).toFixed(0)}k`);
-            }}
-            tick={{ fontSize: 12 }}
-            stroke="#94a3b8"
-          />
-          <Tooltip formatter={(value: number) => showAmounts ? formatCurrency(value) : "Rp ******"} />
-          <Legend />
-          <Bar dataKey="income" fill="#059669" name="Pemasukan" radius={[4, 4, 0, 0]} />
-          <Bar dataKey="expense" fill="#dc2626" name="Pengeluaran" radius={[4, 4, 0, 0]} />
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="w-full">
+      <div className="flex flex-wrap items-center justify-end gap-4 mb-4">
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-[#059669]" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pemasukan</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2 h-2 rounded-full bg-[#dc2626]" />
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pengeluaran</span>
+        </div>
+      </div>
+      <div className="h-[220px] sm:h-[280px]">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barCategoryGap="25%" barGap={2}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} strokeOpacity={0.15} />
+            <XAxis 
+              dataKey="month" 
+              tick={{ fontSize: 10, fontWeight: 'bold' }} 
+              stroke="#94a3b8" 
+              axisLine={false}
+              tickLine={false}
+              dy={10}
+            />
+            <YAxis
+              tickFormatter={(v) => {
+                if (!showAmounts) return "****";
+                return (v >= 1e6 ? `${(v / 1e6).toFixed(0)}jt` : `${(v / 1e3).toFixed(0)}k`);
+              }}
+              tick={{ fontSize: 10, fontWeight: 'bold' }}
+              stroke="#94a3b8"
+              axisLine={false}
+              tickLine={false}
+              width={45}
+            />
+            <Tooltip 
+              cursor={{ fill: 'transparent' }}
+              contentStyle={{ borderRadius: '1.25rem', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.1)', fontSize: '12px', fontWeight: 'bold' }}
+              formatter={(value: number) => showAmounts ? formatCurrency(value) : "Rp ******"} 
+            />
+            <Bar dataKey="income" fill="#059669" name="Pemasukan" radius={[6, 6, 0, 0]} />
+            <Bar dataKey="expense" fill="#dc2626" name="Pengeluaran" radius={[6, 6, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

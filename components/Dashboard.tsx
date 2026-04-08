@@ -12,6 +12,8 @@ import { AddFromPhoto } from "./AddFromPhoto";
 import { TransactionTable } from "./TransactionTable";
 import { ExpensePieChart } from "./ExpensePieChart";
 import { MonthlyBarChart } from "./MonthlyBarChart";
+import { ComparisonChart } from "./ComparisonChart";
+import { ForecastChart } from "./ForecastChart";
 import { MonthPicker } from "./MonthPicker";
 import { useToast } from "./ToastContext";
 import { SkeletonCard, SkeletonTable } from "./Skeleton";
@@ -39,6 +41,7 @@ export function Dashboard({ userId }: DashboardProps) {
   const [showImport, setShowImport] = useState(false);
   const [syncingEmail, setSyncingEmail] = useState(false);
   const [showAmounts, setShowAmounts] = useState(true);
+  const [chartMode, setChartMode] = useState<"trend" | "comparison" | "forecast">("trend");
   const liveUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const supabase = createClient();
   const { showToast } = useToast();
@@ -424,15 +427,73 @@ export function Dashboard({ userId }: DashboardProps) {
 
       <section className="group relative overflow-hidden rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-8 shadow-2xl transition-all hover:shadow-primary/5 animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.25s" }}>
         <div className="absolute -left-24 -top-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-        <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Tren Pemasukan vs Pengeluaran</h2>
-        <p className="mb-8 text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">
-          {periodType === "all" ? "Seluruh data bulanan" : "6 bulan terakhir"}
-        </p>
-        <MonthlyBarChart
-          transactions={transactions}
-          showAllMonths={periodType === "all"}
-          showAmounts={showAmounts}
-        />
+        
+        <div className="relative z-10 mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">
+              {chartMode === 'trend' ? 'Tren Keuangan' : 'Perbandingan'}
+            </h2>
+            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mt-1">
+              {chartMode === 'trend' ? (periodType === "all" ? "Seluruh data bulanan" : "Arus kas 6 bulan") : `${monthFilter} vs Bulan Lalu`}
+            </p>
+          </div>
+
+          <div className="inline-flex p-1 rounded-xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border border-border/50 dark:border-slate-700/50 shadow-sm sm:h-[40px] items-center self-start sm:self-center overflow-x-auto no-scrollbar">
+            <button
+              type="button"
+              onClick={() => setChartMode("trend")}
+              className={`flex h-full items-center justify-center px-4 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all shrink-0 ${
+                chartMode === "trend"
+                  ? "bg-primary text-white shadow-lg shadow-primary/25"
+                  : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+              }`}
+            >
+              Tren
+            </button>
+            <button
+              type="button"
+              onClick={() => setChartMode("comparison")}
+              className={`flex h-full items-center justify-center px-4 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all shrink-0 ${
+                chartMode === "comparison"
+                  ? "bg-primary text-white shadow-lg shadow-primary/25"
+                  : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+              }`}
+            >
+              Banding
+            </button>
+            <button
+              type="button"
+              onClick={() => setChartMode("forecast")}
+              className={`flex h-full items-center justify-center px-4 rounded-lg text-[9px] font-black uppercase tracking-widest transition-all shrink-0 ${
+                chartMode === "forecast"
+                  ? "bg-primary text-white shadow-lg shadow-primary/25"
+                  : "text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+              }`}
+            >
+              Prediksi
+            </button>
+          </div>
+        </div>
+
+        {chartMode === 'trend' ? (
+          <MonthlyBarChart
+            transactions={transactions}
+            showAllMonths={periodType === "all"}
+            showAmounts={showAmounts}
+          />
+        ) : chartMode === 'comparison' ? (
+          <ComparisonChart 
+            transactions={transactions}
+            currentMonth={monthFilter}
+            showAmounts={showAmounts}
+          />
+        ) : (
+          <ForecastChart 
+            transactions={transactions}
+            currentMonth={monthFilter}
+            showAmounts={showAmounts}
+          />
+        )}
       </section>
 
       <section className="group relative rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-8 shadow-2xl transition-all hover:shadow-primary/5 animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.3s" }}>

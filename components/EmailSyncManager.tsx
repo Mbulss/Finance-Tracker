@@ -477,7 +477,9 @@ export function EmailSyncManager() {
                              <span className="text-[10px] font-black text-slate-400 dark:text-slate-500">{mounted && new Date(trx.created_at).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' }).toUpperCase()}</span>
                           </div>
                           <h4 className="text-lg font-black text-slate-900 dark:text-white truncate tracking-tight">{trx.merchantName}</h4>
-                          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-0.5 uppercase tracking-tighter opacity-70 truncate">{trx.note}</p>
+                          <p className="text-[10px] font-bold text-slate-400 dark:text-slate-500 mt-0.5 uppercase tracking-tighter opacity-70 truncate">
+                            {trx.note.replace(trx.merchantName, "").replace(/\[email:[^\]]+\]/g, "").trim() || "No extra details"}
+                          </p>
                         </div>
                       </div>
                       <div className="flex items-center justify-between sm:justify-end gap-6 border-t sm:border-t-0 pt-6 sm:pt-0 border-slate-100 dark:border-slate-800">

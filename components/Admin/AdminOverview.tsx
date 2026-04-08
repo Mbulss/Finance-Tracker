@@ -10,6 +10,8 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  BarChart,
+  Bar,
 } from "recharts";
 import { formatCurrency } from "@/lib/utils";
 import Link from "next/link";
@@ -128,39 +130,71 @@ export function AdminOverview({ data }: AdminOverviewProps) {
 
       {/* 4. Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <ChartContainer title="Acquisition Pipeline" subtitle="User registration growth over 30 days">
+        <ChartContainer 
+          title="Market Pulse" 
+          subtitle="Real-time transaction & user growth dynamics"
+          badge={<span className="text-[10px] font-black text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded-md">LIVE MONITOR</span>}
+        >
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={growthData}>
+              <AreaChart data={growthData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0ea5e9" stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor="#0ea5e9" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#2563eb" stopOpacity={0.2}/>
+                    <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.1} />
-                <XAxis dataKey="date" hide />
-                <YAxis hide />
-                <Tooltip 
-                   contentStyle={{ backgroundColor: '#0f172a', borderRadius: '1.5rem', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5)', color: '#fff' }}
-                   itemStyle={{ color: '#0ea5e9', fontWeight: 'bold' }}
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.15} />
+                <XAxis 
+                  dataKey="date" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#94a3b8', fontSize: 10 }}
+                  tickFormatter={(str) => {
+                    const date = new Date(str);
+                    return date.getDate() % 5 === 0 ? date.toLocaleDateString([], { day: 'numeric', month: 'short' }) : "";
+                  }}
+                  dy={10}
                 />
-                <Area type="monotone" dataKey="users" stroke="#0ea5e9" strokeWidth={4} fillOpacity={1} fill="url(#colorUsers)" />
+                <YAxis hide />
+                <Tooltip content={<CustomChartTooltip />} />
+                <Area 
+                  type="monotone" 
+                  dataKey="users" 
+                  name="New Users"
+                  stroke="#2563eb" 
+                  strokeWidth={3} 
+                  fillOpacity={1} 
+                  fill="url(#colorUsers)" 
+                />
               </AreaChart>
             </ResponsiveContainer>
         </ChartContainer>
 
-        <ChartContainer title="Operational Velocity" subtitle="Daily transaction event volatility">
+        <ChartContainer title="System Activity" subtitle="Daily transaction volume throughput">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={growthData}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.1} />
-                <XAxis dataKey="date" hide />
-                <YAxis hide />
-                <Tooltip 
-                   contentStyle={{ backgroundColor: '#0f172a', borderRadius: '1.5rem', border: 'none', boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5)', color: '#fff' }}
-                   itemStyle={{ color: '#f59e0b', fontWeight: 'bold' }}
+              <BarChart data={growthData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" strokeOpacity={0.15} />
+                <XAxis 
+                  dataKey="date" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{ fill: '#94a3b8', fontSize: 10 }}
+                  tickFormatter={(str) => {
+                    const date = new Date(str);
+                    return date.getDate() % 7 === 0 ? date.toLocaleDateString([], { day: 'numeric', month: 'short' }) : "";
+                  }}
+                  dy={10}
                 />
-                <Line type="monotone" dataKey="transactions" stroke="#f59e0b" strokeWidth={4} dot={false} strokeLinecap="round" />
-              </LineChart>
+                <YAxis hide />
+                <Tooltip content={<CustomChartTooltip />} />
+                <Bar 
+                  dataKey="transactions" 
+                  name="Transactions"
+                  fill="#818cf8" 
+                  radius={[6, 6, 0, 0]}
+                  barSize={20}
+                />
+              </BarChart>
             </ResponsiveContainer>
         </ChartContainer>
       </div>
@@ -311,16 +345,45 @@ function QuickStatus({ label, value, color, icon }: { label: string; value: stri
   );
 }
 
-function ChartContainer({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
+function ChartContainer({ title, subtitle, badge, children }: { title: string; subtitle: string; badge?: React.ReactNode; children: React.ReactNode }) {
   return (
-    <div className="rounded-[3rem] border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl p-10 shadow-2xl shadow-slate-200/50 dark:shadow-none group">
-       <div className="mb-10">
-          <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter group-hover:text-primary transition-colors">{title}</h3>
-          <p className="text-[10px] font-black text-slate-400 mt-2 uppercase tracking-[0.2em]">{subtitle}</p>
+    <div className="rounded-[3rem] border border-slate-200 dark:border-slate-800 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl p-10 shadow-2xl shadow-slate-200/50 dark:shadow-none group relative overflow-hidden">
+       <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full blur-3xl -translate-y-12 translate-x-12 opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+       
+       <div className="mb-10 flex items-start justify-between">
+          <div>
+            <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter group-hover:text-primary transition-colors">{title}</h3>
+            <p className="text-[10px] font-black text-slate-400 mt-2 uppercase tracking-[0.2em]">{subtitle}</p>
+          </div>
+          {badge}
        </div>
        <div className="h-[300px]">
           {children}
        </div>
     </div>
   );
+}
+
+function CustomChartTooltip({ active, payload, label }: any) {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-slate-900/80 dark:bg-slate-800/80 backdrop-blur-xl border border-white/20 p-5 rounded-3xl shadow-2xl animate-in zoom-in-95 duration-200">
+        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b border-white/10 pb-2">
+          {new Date(label).toLocaleDateString([], { month: 'long', day: 'numeric', year: 'numeric' })}
+        </p>
+        <div className="space-y-2">
+          {payload.map((entry: any, index: number) => (
+            <div key={index} className="flex items-center justify-between gap-6">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                <span className="text-[11px] font-bold text-slate-300 uppercase tracking-tight">{entry.name}</span>
+              </div>
+              <span className="text-sm font-black text-white">{entry.value.toLocaleString()}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return null;
 }
