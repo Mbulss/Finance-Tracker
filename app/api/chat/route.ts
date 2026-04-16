@@ -113,7 +113,8 @@ const FAQ_KNOWLEDGE = `
 **Transaksi & Dashboard**
 - Tambah transaksi web: Dashboard → form "Tambah Transaksi" → tipe (Pemasukan/Pengeluaran), kategori, nominal, catatan → Simpan.
 - Tambah dari foto: Dashboard → "Tambah dari foto dengan AI" → upload foto struk/bukti transfer → AI isi otomatis → cek → Simpan.
-- Export CSV: Dashboard → filter bulan/semua → tombol "Export CSV".
+- Impor CSV: Dashboard → tombol "Impor Data" → pilih file CSV hasil export sebelumnya → Simpan.
+- Impor PDF Nobu: Dashboard → tombol "Impor Data" → pilih file PDF mutasi dari Nobu BOSS → masukkan password (jika ada) → cek → Simpan. Sekali klik, ratusan transaksi langsung masuk!
 - Kategori pengeluaran: Food, Transport, Shopping, Bills, Health, Entertainment, Other.
 - Kategori pemasukan: Salary, Freelance, Investment, Gift, Other.
 

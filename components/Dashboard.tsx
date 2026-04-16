@@ -412,7 +412,7 @@ export function Dashboard({ userId }: DashboardProps) {
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8L12 3m0 0L7.5 7.5M12 3v13.5" />
             </svg>
-            Impor CSV
+            Impor Data
           </button>
         </div>
       </header>
@@ -608,7 +608,7 @@ export function Dashboard({ userId }: DashboardProps) {
              <div className="relative flex items-center justify-between mb-8">
                 <div>
                    <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Impor Data</h3>
-                   <p className="mt-0.5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Upload file CSV hasil export kamu</p>
+                   <p className="mt-0.5 text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Upload file CSV atau PDF Mutasi Nobu BOSS</p>
                 </div>
                 <button 
                   onClick={() => setShowImport(false)} 

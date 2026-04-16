@@ -78,7 +78,7 @@ export function InstallPWA({ onClose }: { onClose?: () => void }) {
                 <div className="flex items-start gap-4">
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary font-black text-sm">1</span>
                   <p className="text-sm font-bold text-slate-700 dark:text-slate-300">
-                    Klik ikon <span className="inline-flex py-1 px-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg"><svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg></span> (Install) di sebelah kanan <span className="text-primary italic">Address Bar</span> browser kamu.
+                    Klik ikon <span className="inline-flex py-1 px-1.5 bg-slate-100 dark:bg-slate-800 rounded-lg"><svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg></span> (di Brave/Chrome) di sebelah kanan <span className="text-primary italic">Address Bar</span>.
                   </p>
                 </div>
                 <div className="flex items-start gap-4">
