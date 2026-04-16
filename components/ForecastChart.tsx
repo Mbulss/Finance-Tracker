@@ -61,9 +61,9 @@ export function ForecastChart({ transactions, currentMonth, showAmounts = true }
         </div>
       </div>
 
-      <div className="h-[200px] sm:h-[240px] w-full">
+      <div className="h-[200px] sm:h-[240px] w-full mt-2">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} layout="vertical" margin={{ top: 0, right: 60, left: 15, bottom: 0 }}>
+          <BarChart data={data} layout="vertical" margin={{ top: 0, right: 70, left: 10, bottom: 0 }}>
             <CartesianGrid horizontal={false} stroke="#e2e8f0" strokeDasharray="3 3" strokeOpacity={0.15} />
             <XAxis type="number" hide />
             <YAxis 
@@ -84,14 +84,22 @@ export function ForecastChart({ transactions, currentMonth, showAmounts = true }
                 dataKey="name" 
                 position="top" 
                 offset={8}
-                style={{ fontSize: 10, fontWeight: 'bold', fill: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}
+                style={{ fontSize: 10, fontWeight: '900', fill: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}
               />
               <LabelList 
                 dataKey="amount" 
                 position="right" 
-                formatter={(val: number) => showAmounts ? (val >= 1e6 ? `${(val/1e6).toFixed(1)}jt` : `${(val/1e3).toFixed(0)}k`) : "****"} 
+                formatter={(val: number) => {
+                  if (!showAmounts) return "****";
+                  if (val === 0) return "0";
+                  if (val >= 1e12) return `${(val / 1e12).toFixed(1).replace(/\.0$/, "")}T`;
+                  if (val >= 1e9) return `${(val / 1e9).toFixed(1).replace(/\.0$/, "")}M`;
+                  if (val >= 1e6) return `${(val / 1e6).toFixed(1).replace(/\.0$/, "")}jt`;
+                  if (val >= 1e3) return `${(val / 1e3).toFixed(0)}k`;
+                  return val.toString();
+                }} 
                 offset={10}
-                style={{ fontSize: 11, fontWeight: 'black', fill: '#3b82f6' }}
+                style={{ fontSize: 11, fontWeight: '900', fill: '#3b82f6' }}
               />
             </Bar>
           </BarChart>

@@ -114,7 +114,7 @@ export function EmailSyncManager() {
   const [isIntegrated, setIsIntegrated] = useState(false);
   const [checkingIntegration, setCheckingIntegration] = useState(true);
 
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const { showToast } = useToast();
 
   const fetchIntegration = useCallback(async (session: any) => {

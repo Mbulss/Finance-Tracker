@@ -18,7 +18,7 @@ export function ImportCSV({ userId, onSuccess }: ImportCSVProps) {
   const [previewRows, setPreviewRows] = useState<ParsedCSVRow[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { showToast } = useToast();
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
 
   async function handleFile(file: File) {
     if (!file.name.endsWith(".csv")) {

@@ -99,11 +99,11 @@ export function ComparisonChart({ transactions, currentMonth, showAmounts = true
 
       <div className="h-[260px] min-h-[220px] sm:h-[280px]">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 20, right: 10, left: -25, bottom: 0 }} barCategoryGap="25%" barGap={8}>
+          <BarChart data={data} margin={{ top: 20, right: 10, left: 0, bottom: 0 }} barCategoryGap="25%" barGap={8}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} strokeOpacity={0.15} />
             <XAxis 
               dataKey="name" 
-              tick={{ fontSize: 10, fontWeight: 'bold' }} 
+              tick={{ fontSize: 9, fontWeight: '900' }} 
               stroke="#94a3b8" 
               axisLine={false}
               tickLine={false}
@@ -112,13 +112,18 @@ export function ComparisonChart({ transactions, currentMonth, showAmounts = true
             <YAxis
               tickFormatter={(v) => {
                 if (!showAmounts) return "****";
-                return (v >= 1e6 ? `${(v / 1e6).toFixed(0)}jt` : `${(v / 1e3).toFixed(0)}k`);
+                if (v === 0) return "0";
+                if (v >= 1e12) return `${(v / 1e12).toFixed(1).replace(/\.0$/, "")}T`;
+                if (v >= 1e9) return `${(v / 1e9).toFixed(1).replace(/\.0$/, "")}M`;
+                if (v >= 1e6) return `${(v / 1e6).toFixed(1).replace(/\.0$/, "")}jt`;
+                if (v >= 1e3) return `${(v / 1e3).toFixed(0)}k`;
+                return v.toString();
               }}
-              tick={{ fontSize: 10, fontWeight: 'bold' }}
+              tick={{ fontSize: 9, fontWeight: '900' }}
               stroke="#94a3b8"
               axisLine={false}
               tickLine={false}
-              width={45}
+              width={40}
             />
             <Tooltip 
               cursor={{ fill: 'transparent' }}

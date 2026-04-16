@@ -54,7 +54,7 @@ export function ProfileContent({ email, isGoogleUser = false }: ProfileContentPr
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
 
   async function handleSetPassword(e: React.FormEvent) {
     e.preventDefault();

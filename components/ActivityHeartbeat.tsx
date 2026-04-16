@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 /**
@@ -8,7 +8,7 @@ import { createClient } from "@/lib/supabase/client";
  * This makes the 'Last Seen' in Admin Console reflect real engagement, not just login time.
  */
 export function ActivityHeartbeat() {
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const lastPingRef = useRef<number>(0);
 
   useEffect(() => {

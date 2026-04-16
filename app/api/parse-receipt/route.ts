@@ -409,11 +409,6 @@ function guessCategory(text: string): string {
   return "Other";
 }
 
-const SYSTEM_PROMPT = `Parse struk/transfer Indonesia → JSON saja.
-{"amount":NUMBER,"type":"expense"|"income","category":"STRING","note":"STRING"}
-note = nama toko/restoran. Jika tidak ada, tulis nama item utama. BUKAN alamat, tanggal, jam, kota. Maks 30 karakter.
-category: Food/Transport/Shopping/Bills/Health/Entertainment/Other (expense)`;
-
 export async function POST(request: NextRequest) {
   if (!GEMINI_API_KEY && !GROQ_API_KEY && !OPENROUTER_API_KEY) {
     return NextResponse.json(
@@ -422,7 +417,11 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: { text?: string };
+  let body: { 
+    text?: string;
+    customCategories?: { name: string; type: string }[];
+    hiddenCategories?: { category_name: string; type: string }[];
+  };
   try { body = await request.json(); } catch {
     return NextResponse.json({ error: "Body harus JSON" }, { status: 400 });
   }
@@ -432,17 +431,46 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Teks kosong atau terlalu panjang" }, { status: 400 });
   }
 
+  // 1. Determine Type
+  const isIncome = /transfer\s*masuk|kredit|gaji|salary|deposit/i.test(text);
+  const type = isIncome ? "income" : "expense";
+
+  // 2. Build Category List
+  const defaultCats = type === "income"
+    ? ["Salary", "Freelance", "Investment", "Gift", "Other"]
+    : ["Food", "Transport", "Shopping", "Bills", "Health", "Entertainment", "Other"];
+
+  const userCustom = (body.customCategories || [])
+    .filter(c => c.type === type)
+    .map(c => c.name);
+
+  const hidden = (body.hiddenCategories || [])
+    .filter(c => c.type === type)
+    .map(c => c.category_name);
+
+  // Filter out hidden from default
+  const activeDefault = defaultCats.filter(c => !hidden.includes(c));
+  const validCats = [...activeDefault, ...userCustom];
+  if (validCats.length === 0) validCats.push("Other");
+
   const hints = extractHints(text);
 
   let aiCategory = "";
   let aiNote = "";
   try {
     const merchantInfo = hints.merchant || hints.itemHint || "?";
+    
+    const dynamicSystemPrompt = `Parse struk/transfer Indonesia → JSON saja.
+{"amount":NUMBER,"type":"expense"|"income","category":"STRING","note":"STRING"}
+note = nama toko/restoran/item utama (maks 30 karakter).
+Kategori yang tersedia (${type}): ${validCats.join(", ")}.
+Gunakan salah satu dari list di atas yang paling cocok!`;
+
     const userMsg = hints.totalAmount > 0
       ? `Amount=${hints.totalAmount}. Merchant="${merchantInfo}". Tentukan category. Perbaiki note jadi nama toko/restoran/item saja.\n\n${text.slice(0, 3000)}`
       : `Cari total akhir (bukan subtotal) dan nama toko/restoran.\n\n${text.slice(0, 4000)}`;
 
-    const result = await callAIWithFallback(SYSTEM_PROMPT, userMsg, 120);
+    const result = await callAIWithFallback(dynamicSystemPrompt, userMsg, 120);
 
     if (result) {
       console.log(`[parse-receipt] ${result.provider} raw:`, result.content);
@@ -472,14 +500,13 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const isIncome = /transfer\s*masuk|kredit|gaji|salary|deposit/i.test(text);
-  const type = isIncome ? "income" : "expense";
-  const validCats = type === "income"
-    ? ["Salary", "Freelance", "Investment", "Gift", "Other"]
-    : ["Food", "Transport", "Shopping", "Bills", "Health", "Entertainment", "Other"];
-
   let category = aiCategory && validCats.includes(aiCategory) ? aiCategory : guessCategory(text);
-  if (!validCats.includes(category)) category = validCats[0];
+  
+  // Re-verify category is in the current valid list
+  if (!validCats.includes(category)) {
+    // If guessed category is not valid (maybe hidden), fallback to first available or Other
+    category = validCats.includes("Other") ? "Other" : validCats[0];
+  }
 
   const noteOk = (n: string) =>
     n && n.length >= 3 && !isGarbage(n) && !/\d{2}[:\-\/\.]\d{2}/.test(n) && !isAddress(n) && !/©/.test(n);

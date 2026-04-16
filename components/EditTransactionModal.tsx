@@ -6,14 +6,19 @@ import type { Transaction, TransactionType } from "@/lib/types";
 import { CATEGORIES } from "@/lib/types";
 import { formatAmountDisplay, parseAmountInput } from "@/lib/utils";
 import { SelectDropdown } from "./SelectDropdown";
+import { CategoryManagerModal } from "./CategoryManagerModal";
 
 interface EditTransactionModalProps {
   transaction: Transaction | null;
   onClose: () => void;
   onSave: (id: string, data: { type: TransactionType; amount: number; category: string; note: string }) => void | Promise<void>;
+  customCategories?: { id: string; name: string; type: "income" | "expense" }[];
+  hiddenCategories?: { category_name: string; type: "income" | "expense" }[];
+  userId: string;
+  onRefreshCategories?: () => void;
 }
 
-export function EditTransactionModal({ transaction, onClose, onSave }: EditTransactionModalProps) {
+export function EditTransactionModal({ transaction, onClose, onSave, customCategories = [], hiddenCategories = [], userId }: EditTransactionModalProps) {
   const [type, setType] = useState<TransactionType>("expense");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
@@ -32,7 +37,10 @@ export function EditTransactionModal({ transaction, onClose, onSave }: EditTrans
 
   if (!transaction) return null;
 
-  const categories = type === "income" ? CATEGORIES.income : CATEGORIES.expense;
+  const allCategories = type === "income" ? CATEGORIES.income : CATEGORIES.expense;
+  const filteredDefaultCategories = allCategories.filter(
+    (cat) => !hiddenCategories.some((h) => h.category_name === cat && h.type === type)
+  );
   const num = parseAmountInput(amount);
 
   async function handleSubmit(e: React.FormEvent) {
@@ -41,7 +49,7 @@ export function EditTransactionModal({ transaction, onClose, onSave }: EditTrans
     setLoading(true);
     setError("");
     try {
-      await Promise.resolve(onSave(transaction.id, { type, amount: num, category: category || categories[0], note: note.trim() }));
+      await Promise.resolve(onSave(transaction.id, { type, amount: num, category: category || "Lainnya", note: note.trim() }));
       onClose();
     } catch {
       setError("Gagal menyimpan. Coba lagi.");
@@ -88,14 +96,22 @@ export function EditTransactionModal({ transaction, onClose, onSave }: EditTrans
           <div className="flex rounded-2xl bg-slate-100 dark:bg-slate-800/50 p-1 border border-border/20">
             <button
               type="button"
-              onClick={() => { setType("expense"); setCategory(CATEGORIES.expense[0]); }}
+              onClick={() => { 
+                setType("expense");
+                const newFiltered = CATEGORIES.expense.filter(cat => !hiddenCategories.some(h => h.category_name === cat && h.type === "expense"));
+                setCategory(newFiltered[0] || "Lainnya");
+              }}
               className={`flex-1 rounded-xl py-2.5 text-[10px] font-black uppercase tracking-widest transition-all ${type === "expense" ? "bg-white dark:bg-slate-700 shadow-lg text-primary scale-[1.02]" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"}`}
             >
               Pengeluaran
             </button>
             <button
               type="button"
-              onClick={() => { setType("income"); setCategory(CATEGORIES.income[0]); }}
+              onClick={() => { 
+                setType("income");
+                const newFiltered = CATEGORIES.income.filter(cat => !hiddenCategories.some(h => h.category_name === cat && h.type === "income"));
+                setCategory(newFiltered[0] || "Lainnya");
+              }}
               className={`flex-1 rounded-xl py-2.5 text-[10px] font-black uppercase tracking-widest transition-all ${type === "income" ? "bg-white dark:bg-slate-700 shadow-lg text-primary scale-[1.02]" : "text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"}`}
             >
               Pemasukan
@@ -121,7 +137,10 @@ export function EditTransactionModal({ transaction, onClose, onSave }: EditTrans
               <SelectDropdown
                 value={category}
                 onChange={setCategory}
-                options={categories.map(c => ({ value: c, label: c.toUpperCase() }))}
+                options={[
+                  ...filteredDefaultCategories.map(c => ({ value: c, label: c.toUpperCase() })),
+                  ...customCategories.filter(c => c.type === type).map(c => ({ value: c.name, label: c.name.toUpperCase() }))
+                ]}
                 placeholder="Kategori"
                 className="w-full h-12"
               />

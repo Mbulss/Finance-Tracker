@@ -89,7 +89,7 @@ export function SelectDropdown({
         top: position.top + 8,
         left: position.left,
         width: position.width,
-        zIndex: 9999,
+        zIndex: 99999,
       }}
       className="max-h-72 min-w-[200px] overflow-auto rounded-2xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 py-2 shadow-2xl animate-fade-in-up"
     >
@@ -121,7 +121,9 @@ export function SelectDropdown({
               onChange(opt.value);
               setOpen(false);
             }}
-            className={`flex w-full items-center px-4 py-2.5 rounded-xl text-left text-xs font-bold transition ${
+            className={`flex w-full items-center px-4 py-2.5 rounded-xl text-left text-xs transition ${
+              opt.value === "__custom__" ? "font-black" : "font-bold"
+            } ${
               value === opt.value
                 ? "bg-primary/10 text-primary shadow-sm"
                 : "text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800/50"

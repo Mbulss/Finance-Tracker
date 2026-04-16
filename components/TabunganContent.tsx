@@ -159,7 +159,7 @@ export function TabunganContent({ userId, initialTelegramLinked = false }: Tabun
   const [riwayatPage, setRiwayatPage] = useState(1);
   const [activeTab, setActiveTab] = useState<"setor" | "pindah">("setor");
   const [isTelegramLinked, setIsTelegramLinked] = useState<boolean>(initialTelegramLinked);
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const { showToast } = useToast();
   const [showAmounts, setShowAmounts] = useState(true);
 

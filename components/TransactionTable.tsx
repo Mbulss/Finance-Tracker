@@ -6,6 +6,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { EditTransactionModal } from "./EditTransactionModal";
 import { TransactionDetailModal } from "./TransactionDetailModal";
 import { DeleteConfirmModal } from "./DeleteConfirmModal";
+import { DeleteAllConfirmModal } from "./DeleteAllConfirmModal";
 import { SelectDropdown } from "./SelectDropdown";
 import { useToast } from "./ToastContext";
 import { EmptyState } from "./EmptyState";
@@ -13,19 +14,26 @@ import { EmptyState } from "./EmptyState";
 interface TransactionTableProps {
   transactions: Transaction[];
   onDelete: (id: string) => void;
+  onDeleteAll: () => Promise<void>;
   onEdit: (id: string, data: { type: "income" | "expense"; amount: number; category: string; note: string }) => void;
   showAmounts?: boolean;
+  customCategories?: { id: string; name: string; type: "income" | "expense" }[];
+  hiddenCategories?: { category_name: string; type: "income" | "expense" }[];
+  userId: string;
+  onRefreshCategories?: () => void;
 }
 
 const PAGE_SIZE = 15;
 
 type TypeFilter = "all" | "income" | "expense";
 
-export function TransactionTable({ transactions, onDelete, onEdit, showAmounts = true }: TransactionTableProps) {
+export function TransactionTable({ transactions, onDelete, onDeleteAll, onEdit, userId, showAmounts = true, customCategories = [], hiddenCategories = [], onRefreshCategories }: TransactionTableProps) {
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [viewing, setViewing] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = useState(false);
+  const [deleteAllLoading, setDeleteAllLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
@@ -71,11 +79,20 @@ export function TransactionTable({ transactions, onDelete, onEdit, showAmounts =
   return (
     <>
       <div className="mb-8 flex flex-col gap-6">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
               Total {filtered.length} Transaksi ditemukan
             </p>
+            {transactions.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setIsDeleteAllModalOpen(true)}
+                className="px-2 py-1 rounded-lg bg-rose-500/10 text-rose-500 text-[9px] font-black uppercase tracking-widest hover:bg-rose-500 hover:text-white transition-all"
+              >
+                Hapus Semua
+              </button>
+            )}
           </div>
           <div className="grid grid-cols-3 p-1 rounded-2xl bg-slate-100 dark:bg-slate-800/50 border border-border/20 w-fit min-w-[240px]">
             {(["all", "income", "expense"] as const).map((type) => (
@@ -104,8 +121,8 @@ export function TransactionTable({ transactions, onDelete, onEdit, showAmounts =
               type="search"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder={showAmounts ? "Cari catatan, kategori, atau nominal..." : "Cari catatan atau kategori..."}
-              className="w-full h-14 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl pl-12 pr-4 text-sm font-bold text-slate-900 dark:text-white placeholder:text-slate-400 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+              placeholder={showAmounts ? "Cari catatan, kategori..." : "Cari..."}
+              className="w-full h-14 rounded-2xl border border-slate-200 dark:border-slate-700 bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl pl-12 pr-4 text-[12px] sm:text-sm font-bold text-slate-900 dark:text-white placeholder:text-[11px] sm:placeholder:text-sm placeholder:font-black placeholder:uppercase placeholder:tracking-widest placeholder:text-slate-400 focus:border-primary focus:ring-4 focus:ring-primary/10 transition-all outline-none"
             />
           </div>
           <div className="sm:col-span-4">
@@ -167,10 +184,10 @@ export function TransactionTable({ transactions, onDelete, onEdit, showAmounts =
                     <div className="flex items-center justify-end gap-2 sm:gap-3">
                       <button
                         onClick={() => setViewing(t)}
-                        className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white dark:bg-slate-800 text-slate-400 hover:text-primary hover:bg-primary/5 hover:border-primary/30 border border-slate-200/50 dark:border-slate-700/50 shadow-sm transition-all duration-200 group/btn"
+                        className="h-8 w-8 sm:h-10 sm:w-10 flex items-center justify-center rounded-xl sm:rounded-2xl bg-white dark:bg-slate-800 text-slate-400 hover:text-primary hover:bg-primary/5 hover:border-primary/30 border border-slate-200/50 dark:border-slate-700/50 shadow-sm transition-all duration-200 group/btn"
                         title="Detail"
                       >
-                        <svg className="h-5 w-5 transition-transform group-hover/btn:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover/btn:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                         </svg>
@@ -179,10 +196,10 @@ export function TransactionTable({ transactions, onDelete, onEdit, showAmounts =
                       {!t.id.startsWith("opt-") && (
                         <button
                           onClick={() => setEditing(t)}
-                          className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white dark:bg-slate-800 text-slate-400 hover:text-amber-500 hover:bg-amber-500/5 hover:border-amber-500/30 border border-slate-200/50 dark:border-slate-700/50 shadow-sm transition-all duration-200 group/btn"
+                          className="h-8 w-8 sm:h-10 sm:w-10 flex items-center justify-center rounded-xl sm:rounded-2xl bg-white dark:bg-slate-800 text-slate-400 hover:text-amber-500 hover:bg-amber-500/5 hover:border-amber-500/30 border border-slate-200/50 dark:border-slate-700/50 shadow-sm transition-all duration-200 group/btn"
                           title="Edit"
                         >
-                          <svg className="h-5 w-5 transition-transform group-hover/btn:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <svg className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover/btn:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                           </svg>
                         </button>
@@ -190,10 +207,10 @@ export function TransactionTable({ transactions, onDelete, onEdit, showAmounts =
 
                       <button
                         onClick={() => setDeleting(t)}
-                        className="h-10 w-10 flex items-center justify-center rounded-2xl bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 hover:bg-rose-500/5 hover:border-rose-500/30 border border-slate-200/50 dark:border-slate-700/50 shadow-sm transition-all duration-200 group/btn"
+                        className="h-8 w-8 sm:h-10 sm:w-10 flex items-center justify-center rounded-xl sm:rounded-2xl bg-white dark:bg-slate-800 text-slate-400 hover:text-rose-500 hover:bg-rose-500/5 hover:border-rose-500/30 border border-slate-200/50 dark:border-slate-700/50 shadow-sm transition-all duration-200 group/btn"
                         title="Hapus"
                       >
-                        <svg className="h-5 w-5 transition-transform group-hover/btn:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover/btn:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                         </svg>
                       </button>
@@ -245,6 +262,10 @@ export function TransactionTable({ transactions, onDelete, onEdit, showAmounts =
         transaction={editing}
         onClose={() => setEditing(null)}
         onSave={async (id, data) => { await onEdit(id, data); }}
+        customCategories={customCategories}
+        hiddenCategories={hiddenCategories}
+        userId={userId}
+        onRefreshCategories={onRefreshCategories}
       />
       <TransactionDetailModal
         transaction={viewing}
@@ -266,6 +287,21 @@ export function TransactionTable({ transactions, onDelete, onEdit, showAmounts =
           }
         }}
         loading={deleteLoading}
+      />
+      <DeleteAllConfirmModal
+        isOpen={isDeleteAllModalOpen}
+        onClose={() => setIsDeleteAllModalOpen(false)}
+        onConfirm={async () => {
+          setDeleteAllLoading(true);
+          try {
+            await onDeleteAll();
+            showToast("Semua data transaksi berhasil dihapus");
+          } finally {
+            setIsDeleteAllModalOpen(false);
+            setDeleteAllLoading(false);
+          }
+        }}
+        loading={deleteAllLoading}
       />
     </>
   );

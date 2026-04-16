@@ -7,6 +7,7 @@ import type { TransactionType } from "@/lib/types";
 import { CATEGORIES } from "@/lib/types";
 import { formatAmountDisplay, parseAmountInput } from "@/lib/utils";
 import { SelectDropdown } from "@/components/SelectDropdown";
+import { CategoryManagerModal } from "./CategoryManagerModal";
 
 export type PrefillFromPhoto = {
   type: TransactionType;
@@ -22,22 +23,29 @@ interface AddTransactionFormProps {
   onOptimisticFail?: (tempId: string) => void;
   prefill?: PrefillFromPhoto | null;
   onPrefillApplied?: () => void;
+  customCategories?: { id: string; name: string; type: "income" | "expense" }[];
+  hiddenCategories?: { category_name: string; type: "income" | "expense" }[];
+  onRefreshCategories?: () => void;
 }
 
-export function AddTransactionForm({ userId, onSuccess, onOptimisticAdd, onOptimisticFail, prefill, onPrefillApplied }: AddTransactionFormProps) {
+export function AddTransactionForm({ userId, onSuccess, onOptimisticAdd, onOptimisticFail, prefill, onPrefillApplied, customCategories = [], hiddenCategories = [], onRefreshCategories }: AddTransactionFormProps) {
   const [type, setType] = useState<TransactionType>("expense");
   const [amount, setAmount] = useState("");
-  const [category, setCategory] = useState<string>(CATEGORIES.expense[0]);
+  const [category, setCategory] = useState<string>("");
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [pots, setPots] = useState<{ id: string; name: string }[]>([]);
   const [saveToSavings, setSaveToSavings] = useState(false);
   const [selectedPotId, setSelectedPotId] = useState<string>("__umum__");
-  const supabase = createClient();
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
+  const [supabase] = useState(() => createClient());
   const { showToast } = useToast();
 
-  const categories = type === "income" ? CATEGORIES.income : CATEGORIES.expense;
+  const allCategories = type === "income" ? CATEGORIES.income : CATEGORIES.expense;
+  const filteredDefaultCategories = allCategories.filter(
+    (cat) => !hiddenCategories.some((h) => h.category_name === cat && h.type === type)
+  );
 
   useEffect(() => {
     async function fetchPots() {
@@ -51,11 +59,31 @@ export function AddTransactionForm({ userId, onSuccess, onOptimisticAdd, onOptim
     fetchPots();
   }, [userId, supabase]);
 
+  // Sync category selection when hidden state changes or type changes
+  useEffect(() => {
+    const available = [
+      ...filteredDefaultCategories,
+      ...customCategories.filter(c => c.type === type).map(c => c.name)
+    ];
+    if (category && !available.includes(category)) {
+      setCategory(""); // Reset if current selection becomes hidden
+    } else if (!category && available.length > 0) {
+      // Don't auto-select if user wants to be forced, 
+      // but usually apps auto-select the first one.
+      // User said "kalau ga dipilih gabisa input", let's keep it empty to force.
+    }
+  }, [type, hiddenCategories, customCategories]);
+
   useEffect(() => {
     if (!prefill) return;
     setType(prefill.type);
     setAmount(formatAmountDisplay(String(prefill.amount)));
-    setCategory(prefill.category);
+    if (CATEGORIES.income.includes(prefill.category as any) || CATEGORIES.expense.includes(prefill.category as any)) {
+      setCategory(prefill.category);
+    } else {
+      // Fallback if not in predefined list (e.g. from photo)
+      setCategory(prefill.category);
+    }
     setNote(prefill.note);
     onPrefillApplied?.();
   }, [prefill, onPrefillApplied]);
@@ -68,6 +96,10 @@ export function AddTransactionForm({ userId, onSuccess, onOptimisticAdd, onOptim
       setError("Masukkan jumlah yang valid.");
       return;
     }
+    if (!category) {
+      setError("Pilih kategori terlebih dahulu.");
+      return;
+    }
     setLoading(true);
     const tempId = "opt-" + Date.now();
     const optimisticRow = {
@@ -75,7 +107,7 @@ export function AddTransactionForm({ userId, onSuccess, onOptimisticAdd, onOptim
       user_id: userId,
       type,
       amount: num,
-      category: category || categories[0],
+      category: category,
       note: note.trim() || "",
       created_at: new Date().toISOString(),
     };
@@ -85,7 +117,7 @@ export function AddTransactionForm({ userId, onSuccess, onOptimisticAdd, onOptim
         user_id: userId,
         type,
         amount: num,
-        category: category || categories[0],
+        category: category,
         note: note.trim() || "",
       });
       if (err) throw err;
@@ -104,8 +136,8 @@ export function AddTransactionForm({ userId, onSuccess, onOptimisticAdd, onOptim
 
       setAmount("");
       setNote("");
-      setCategory(categories[0]);
       setSaveToSavings(false);
+      // Let it be reset via useEffect
       showToast(saveToSavings ? "Setoran ke tabungan berhasil!" : "Transaksi disimpan");
       onSuccess();
     } catch (e) {
@@ -116,6 +148,12 @@ export function AddTransactionForm({ userId, onSuccess, onOptimisticAdd, onOptim
     }
   }
 
+  const availableCategories = [
+    ...filteredDefaultCategories.map(c => ({ value: c, label: c })),
+    ...customCategories.filter(c => c.type === type).map(c => ({ value: c.name, label: c.name }))
+  ];
+  const availableCount = availableCategories.length;
+
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="flex rounded-xl bg-slate-100 dark:bg-slate-700 p-1">
@@ -123,7 +161,7 @@ export function AddTransactionForm({ userId, onSuccess, onOptimisticAdd, onOptim
           type="button"
           onClick={() => {
             setType("expense");
-            setCategory(CATEGORIES.expense[0]);
+            setCategory(""); 
           }}
           className={`flex-1 min-h-[48px] rounded-lg py-3 sm:py-2 text-sm font-medium transition ${type === "expense" ? "bg-card dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow soft" : "text-muted dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"}`}
         >
@@ -133,7 +171,7 @@ export function AddTransactionForm({ userId, onSuccess, onOptimisticAdd, onOptim
           type="button"
           onClick={() => {
             setType("income");
-            setCategory(CATEGORIES.income[0]);
+            setCategory(""); 
           }}
           className={`flex-1 min-h-[48px] rounded-lg py-3 sm:py-2 text-sm font-medium transition ${type === "income" ? "bg-card dark:bg-slate-800 text-slate-800 dark:text-slate-100 shadow soft" : "text-muted dark:text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"}`}
         >
@@ -153,12 +191,22 @@ export function AddTransactionForm({ userId, onSuccess, onOptimisticAdd, onOptim
         />
       </div>
       <div>
-        <label className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">Kategori</label>
+        <div className="mb-1.5 flex items-center justify-between">
+          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Kategori</label>
+          <button
+            type="button"
+            onClick={() => setShowCategoryManager(true)}
+            className="text-[10px] font-black uppercase tracking-widest text-primary hover:underline"
+          >
+            Kelola
+          </button>
+        </div>
         <SelectDropdown
           value={category}
           onChange={setCategory}
-          options={categories.map(c => ({ value: c, label: c }))}
-          placeholder="Pilih Kategori"
+          options={availableCategories}
+          placeholder={availableCount === 0 ? "⚠️ Kelola Kategori..." : "Pilih Kategori"}
+          hideAllOption={true}
         />
       </div>
       <div>
@@ -214,11 +262,23 @@ export function AddTransactionForm({ userId, onSuccess, onOptimisticAdd, onOptim
       {error && <p className="text-sm text-expense">{error}</p>}
       <button
         type="submit"
-        disabled={loading}
-        className="w-full min-h-[48px] rounded-xl bg-primary py-3 font-semibold text-white shadow-lg shadow-primary/25 transition hover:bg-primary-hover hover:shadow-primary/30 disabled:opacity-50 active:scale-[0.98]"
+        disabled={loading || !parseAmountInput(amount) || parseAmountInput(amount) <= 0 || !category}
+        className="h-14 w-full rounded-2xl bg-primary text-base font-black uppercase tracking-widest text-white shadow-xl shadow-primary/30 transition-all hover:bg-primary-hover hover:scale-[1.02] active:scale-95 disabled:opacity-50"
       >
         {loading ? "Menyimpan..." : "Tambah Transaksi"}
       </button>
+
+      <CategoryManagerModal
+        userId={userId}
+        isOpen={showCategoryManager}
+        onClose={() => setShowCategoryManager(false)}
+        type={type}
+        categories={customCategories}
+        hiddenCategories={hiddenCategories}
+        onRefresh={() => {
+          onRefreshCategories?.();
+        }}
+      />
     </form>
   );
 }

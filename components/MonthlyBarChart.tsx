@@ -62,13 +62,13 @@ export function MonthlyBarChart({ transactions, showAllMonths = false, showAmoun
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">Pengeluaran</span>
         </div>
       </div>
-      <div className="h-[220px] sm:h-[280px]">
+      <div className="h-[220px] sm:h-[300px] w-full mt-2">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barCategoryGap="25%" barGap={2}>
+          <BarChart data={data} margin={{ top: 10, right: 5, left: 0, bottom: 0 }} barCategoryGap="20%" barGap={3}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} strokeOpacity={0.15} />
             <XAxis 
               dataKey="month" 
-              tick={{ fontSize: 10, fontWeight: 'bold' }} 
+              tick={{ fontSize: 9, fontWeight: '900' }} 
               stroke="#94a3b8" 
               axisLine={false}
               tickLine={false}
@@ -77,13 +77,18 @@ export function MonthlyBarChart({ transactions, showAllMonths = false, showAmoun
             <YAxis
               tickFormatter={(v) => {
                 if (!showAmounts) return "****";
-                return (v >= 1e6 ? `${(v / 1e6).toFixed(0)}jt` : `${(v / 1e3).toFixed(0)}k`);
+                if (v === 0) return "0";
+                if (v >= 1e12) return `${(v / 1e12).toFixed(1).replace(/\.0$/, "")}T`;
+                if (v >= 1e9) return `${(v / 1e9).toFixed(1).replace(/\.0$/, "")}M`;
+                if (v >= 1e6) return `${(v / 1e6).toFixed(1).replace(/\.0$/, "")}jt`;
+                if (v >= 1e3) return `${(v / 1e3).toFixed(0)}k`;
+                return v.toString();
               }}
-              tick={{ fontSize: 10, fontWeight: 'bold' }}
+              tick={{ fontSize: 9, fontWeight: "900" }}
               stroke="#94a3b8"
               axisLine={false}
               tickLine={false}
-              width={45}
+              width={40}
             />
             <Tooltip 
               cursor={{ fill: 'transparent' }}

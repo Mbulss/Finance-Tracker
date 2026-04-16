@@ -19,6 +19,7 @@ import { useToast } from "./ToastContext";
 import { SkeletonCard, SkeletonTable } from "./Skeleton";
 import { SpendingInsights } from "./SpendingInsights";
 import { ImportCSV } from "./ImportCSV";
+import { ImportNobuPDF } from "./ImportNobuPDF";
 
 interface DashboardProps {
   userId: string;
@@ -42,8 +43,10 @@ export function Dashboard({ userId }: DashboardProps) {
   const [syncingEmail, setSyncingEmail] = useState(false);
   const [showAmounts, setShowAmounts] = useState(true);
   const [chartMode, setChartMode] = useState<"trend" | "comparison" | "forecast">("trend");
+  const [customCategories, setCustomCategories] = useState<{ id: string; name: string; type: "income" | "expense" }[]>([]);
+  const [hiddenCategories, setHiddenCategories] = useState<{ category_name: string; type: "income" | "expense" }[]>([]);
   const liveUpdateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const supabase = createClient();
+  const [supabase] = useState(() => createClient());
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -85,8 +88,26 @@ export function Dashboard({ userId }: DashboardProps) {
     setLoading(false);
   }, [supabase, userId]);
 
+  const fetchCustomCategories = useCallback(async () => {
+    const { data } = await supabase
+      .from("custom_categories")
+      .select("id, name, type")
+      .eq("user_id", userId);
+    if (data) setCustomCategories(data);
+  }, [supabase, userId]);
+
+  const fetchHiddenCategories = useCallback(async () => {
+    const { data } = await supabase
+      .from("hidden_categories")
+      .select("category_name, type")
+      .eq("user_id", userId);
+    if (data) setHiddenCategories(data);
+  }, [supabase, userId]);
+
   useEffect(() => {
     fetchTransactions();
+    fetchCustomCategories();
+    fetchHiddenCategories();
 
     // Auto-sync email in background on mount
     const checkAndSyncEmail = async () => {
@@ -113,13 +134,29 @@ export function Dashboard({ userId }: DashboardProps) {
 
     checkAndSyncEmail();
 
+    let fetchTxTimeout: NodeJS.Timeout;
+    let fetchCatTimeout: NodeJS.Timeout;
+
+    const debouncedFetchTx = () => {
+      clearTimeout(fetchTxTimeout);
+      fetchTxTimeout = setTimeout(() => fetchTransactions(), 300);
+    };
+
+    const debouncedFetchCat = () => {
+      clearTimeout(fetchCatTimeout);
+      fetchCatTimeout = setTimeout(() => {
+        fetchCustomCategories();
+        fetchHiddenCategories();
+      }, 300);
+    };
+
     const channel = supabase
       .channel(`transactions:${userId}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "transactions", filter: `user_id=eq.${userId}` },
         () => {
-          fetchTransactions();
+          debouncedFetchTx();
           if (liveUpdateTimeoutRef.current) clearTimeout(liveUpdateTimeoutRef.current);
           setLiveUpdated(true);
           liveUpdateTimeoutRef.current = setTimeout(() => {
@@ -128,9 +165,25 @@ export function Dashboard({ userId }: DashboardProps) {
           }, 3000);
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "custom_categories", filter: `user_id=eq.${userId}` },
+        () => {
+          debouncedFetchCat();
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "hidden_categories", filter: `user_id=eq.${userId}` },
+        () => {
+          debouncedFetchCat();
+        }
+      )
       .subscribe();
 
     return () => {
+      clearTimeout(fetchTxTimeout);
+      clearTimeout(fetchCatTimeout);
       if (liveUpdateTimeoutRef.current) clearTimeout(liveUpdateTimeoutRef.current);
       supabase.removeChannel(channel);
     };
@@ -177,6 +230,15 @@ export function Dashboard({ userId }: DashboardProps) {
       next.delete(id);
       return next;
     });
+  };
+
+  const handleDeleteAll = async () => {
+    const { error } = await supabase.from("transactions").delete().eq("user_id", userId);
+    if (error) {
+      showToast("Gagal menghapus semua transaksi", "error");
+      return;
+    }
+    await fetchTransactions();
   };
 
   const handleEdit = async (
@@ -391,8 +453,8 @@ export function Dashboard({ userId }: DashboardProps) {
         </div>
       )}
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        <section className="group relative overflow-hidden rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-8 shadow-2xl transition-all hover:shadow-primary/5 animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.15s" }}>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <section className="group relative overflow-hidden rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-5 sm:p-8 shadow-2xl transition-all hover:shadow-primary/5 animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.15s" }}>
           <div className="absolute -right-24 -top-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none group-hover:bg-primary/10 transition-colors" />
           <h2 className="mb-6 text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Tambah Transaksi</h2>
           <AddFromPhoto onParsed={setPrefillFromPhoto} />
@@ -407,11 +469,14 @@ export function Dashboard({ userId }: DashboardProps) {
               }}
               prefill={prefillFromPhoto}
               onPrefillApplied={() => setPrefillFromPhoto(null)}
+              customCategories={customCategories}
+              hiddenCategories={hiddenCategories}
+              onRefreshCategories={() => { fetchCustomCategories(); fetchHiddenCategories(); }}
             />
           </div>
         </section>
 
-        <section className="group relative overflow-hidden flex flex-col rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-8 shadow-2xl transition-all hover:shadow-primary/5 animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.2s" }}>
+        <section className="group relative overflow-hidden flex flex-col rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-5 sm:p-8 shadow-2xl transition-all hover:shadow-primary/5 animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.2s" }}>
           <div className="absolute -right-24 -bottom-24 w-64 h-64 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none group-hover:bg-emerald-500/10 transition-colors" />
           <div>
             <h2 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tighter">Pengeluaran Kategori</h2>
@@ -425,7 +490,7 @@ export function Dashboard({ userId }: DashboardProps) {
         </section>
       </div>
 
-      <section className="group relative overflow-hidden rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-8 shadow-2xl transition-all hover:shadow-primary/5 animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.25s" }}>
+      <section className="group relative overflow-hidden rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-5 sm:p-8 shadow-2xl transition-all hover:shadow-primary/5 animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.25s" }}>
         <div className="absolute -left-24 -top-24 w-64 h-64 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
         
         <div className="relative z-10 mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -438,7 +503,7 @@ export function Dashboard({ userId }: DashboardProps) {
             </p>
           </div>
 
-          <div className="inline-flex p-1 rounded-xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border border-border/50 dark:border-slate-700/50 shadow-sm sm:h-[40px] items-center self-start sm:self-center overflow-x-auto no-scrollbar">
+          <div className="flex p-1 rounded-xl bg-white/50 dark:bg-slate-800/50 backdrop-blur-xl border border-border/50 dark:border-slate-700/50 shadow-sm sm:h-[40px] items-center self-start sm:self-center overflow-x-auto no-scrollbar max-w-full">
             <button
               type="button"
               onClick={() => setChartMode("trend")}
@@ -496,7 +561,7 @@ export function Dashboard({ userId }: DashboardProps) {
         )}
       </section>
 
-      <section className="group relative rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-8 shadow-2xl transition-all hover:shadow-primary/5 animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.3s" }}>
+      <section className="group relative rounded-[2.5rem] border border-border/50 dark:border-slate-700 bg-white/70 dark:bg-slate-900/70 backdrop-blur-xl p-5 sm:p-8 shadow-2xl transition-all hover:shadow-primary/5 animate-fade-in-up transform-gpu backface-visibility-hidden" style={{ animationDelay: "0.3s" }}>
         <div className="absolute inset-0 overflow-hidden rounded-[2.5rem] pointer-events-none">
           <div className="absolute -right-24 -top-24 w-64 h-64 bg-slate-500/5 rounded-full blur-3xl" />
         </div>
@@ -505,8 +570,13 @@ export function Dashboard({ userId }: DashboardProps) {
         <TransactionTable
           transactions={displayedForTable}
           onDelete={handleDelete}
+          onDeleteAll={handleDeleteAll}
           onEdit={handleEdit}
           showAmounts={showAmounts}
+          customCategories={customCategories}
+          hiddenCategories={hiddenCategories}
+          userId={userId}
+          onRefreshCategories={() => { fetchCustomCategories(); fetchHiddenCategories(); }}
         />
 
       </section>
@@ -543,13 +613,32 @@ export function Dashboard({ userId }: DashboardProps) {
                    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
              </div>
-             <ImportCSV
-                userId={userId}
-                onSuccess={() => {
-                   setShowImport(false);
-                   fetchTransactions();
-                }}
-             />
+             <div className="grid gap-4">
+                <ImportCSV
+                   userId={userId}
+                   onSuccess={() => {
+                      setShowImport(false);
+                      fetchTransactions();
+                   }}
+                />
+                <div className="relative">
+                   <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                      <div className="w-full border-t border-border/10 dark:border-slate-800"></div>
+                   </div>
+                   <div className="relative flex justify-center text-[8px] font-black uppercase tracking-widest">
+                      <span className="bg-white/95 dark:bg-slate-900/95 px-2 text-slate-400">ATAU</span>
+                   </div>
+                </div>
+                <ImportNobuPDF
+                   userId={userId}
+                   onSuccess={() => {
+                      setShowImport(false);
+                      fetchTransactions();
+                   }}
+                   customCategories={customCategories}
+                   hiddenCategories={hiddenCategories}
+                />
+             </div>
           </div>
         </div>,
         document.body

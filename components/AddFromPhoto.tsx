@@ -6,13 +6,17 @@ import type { PrefillFromPhoto } from "./AddTransactionForm";
 
 interface AddFromPhotoProps {
   onParsed: (data: PrefillFromPhoto) => void;
+  customCategories?: { id: string; name: string; type: "income" | "expense" }[];
+  hiddenCategories?: { category_name: string; type: "income" | "expense" }[];
 }
 
 function processFile(
   file: File,
   onParsed: AddFromPhotoProps["onParsed"],
   showToast: (msg: string, type?: "success" | "error") => void,
-  setLoading: (v: boolean) => void
+  setLoading: (v: boolean) => void,
+  customCategories: AddFromPhotoProps["customCategories"] = [],
+  hiddenCategories: AddFromPhotoProps["hiddenCategories"] = []
 ) {
   if (!file.type.startsWith("image/")) {
     showToast("Pilih file gambar (foto struk/transfer)", "error");
@@ -35,7 +39,11 @@ function processFile(
       const res = await fetch("/api/parse-receipt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text.slice(0, 8000) }),
+        body: JSON.stringify({ 
+          text: text.slice(0, 8000),
+          customCategories,
+          hiddenCategories
+        }),
       });
       const json = await res.json().catch(() => ({}));
 
@@ -73,7 +81,7 @@ function processFile(
   })();
 }
 
-export function AddFromPhoto({ onParsed }: AddFromPhotoProps) {
+export function AddFromPhoto({ onParsed, customCategories = [], hiddenCategories = [] }: AddFromPhotoProps) {
   const [loading, setLoading] = useState(false);
   const [drag, setDrag] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -83,7 +91,7 @@ export function AddFromPhoto({ onParsed }: AddFromPhotoProps) {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
-    processFile(file, onParsed, showToast, setLoading);
+    processFile(file, onParsed, showToast, setLoading, customCategories, hiddenCategories);
   }
 
   function handleDrop(e: React.DragEvent) {
@@ -91,7 +99,7 @@ export function AddFromPhoto({ onParsed }: AddFromPhotoProps) {
     setDrag(false);
     const file = e.dataTransfer.files?.[0];
     if (!file) return;
-    processFile(file, onParsed, showToast, setLoading);
+    processFile(file, onParsed, showToast, setLoading, customCategories, hiddenCategories);
   }
 
   function handleDragOver(e: React.DragEvent) {
