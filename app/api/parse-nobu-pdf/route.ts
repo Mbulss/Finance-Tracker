@@ -12,7 +12,10 @@ function runPdfParser(base64Data: string, password?: string): Promise<{ text: st
       maxBuffer: 100 * 1024 * 1024, // 100MB for large PDFs
     }, (error, stdout, stderr) => {
       try {
-        const result = JSON.parse(stdout.trim());
+        const outString = stdout.trim();
+        const jsonStart = outString.indexOf("{");
+        const jsonString = jsonStart >= 0 ? outString.slice(jsonStart) : outString;
+        const result = JSON.parse(jsonString);
         if (result.error) {
           reject(new Error(result.error));
         } else {

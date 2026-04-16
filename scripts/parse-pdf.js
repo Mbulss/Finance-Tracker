@@ -9,6 +9,11 @@
  */
 
 async function main() {
+  // Mute console warnings emitting from pdfjs-dist that pollute JSON stdout
+  console.log = () => {};
+  console.warn = () => {};
+  console.error = () => {};
+
   try {
     const password = process.argv[2] || "";
 
