@@ -3,10 +3,9 @@ import { parseNobuPDFText } from "@/lib/nobu-pdf-parser";
 import { execFile } from "child_process";
 import path from "path";
 
-// Force Vercel @vercel/nft to bundle pdfjs-dist for the child process script
-const _forceBundle = () => {
-  require.resolve("pdfjs-dist/legacy/build/pdf.mjs");
-};
+// Force Vercel @vercel/nft to trace and bundle the pdfjs-dist module
+// without triggering Webpack ESM require errors.
+import "pdfjs-dist/legacy/build/pdf.js";
 
 function runPdfParser(base64Data: string, password?: string): Promise<{ text: string; numpages: number }> {
   return new Promise((resolve, reject) => {
