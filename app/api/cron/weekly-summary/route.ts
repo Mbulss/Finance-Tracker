@@ -20,7 +20,8 @@ export async function GET(request: NextRequest) {
   const supabase = createSupabaseAdmin();
   const { data: links } = await supabase.from("telegram_links").select("chat_id, user_id");
   if (!links?.length) {
-    return NextResponse.json({ ok: true, sent: 0 });
+    console.log("No telegram links found, skipping weekly summary.");
+    return NextResponse.json({ ok: true, sent: 0, message: "No linked users" });
   }
 
   const weekAgo = new Date();

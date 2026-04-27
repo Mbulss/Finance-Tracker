@@ -62,11 +62,11 @@ export async function GET(req: Request) {
       if (!access_token) continue;
 
       // 4. Buka Gmail user menggunakan akses sementara (access_token)
-      // Tarik 10 transaksi terakhir (newer_than:1d memastikan hanya mengecek email 24 jam terakhir agar cepat)
-      const query = encodeURIComponent("from:(noreply.livin@bankmandiri.co.id OR bca.co.id) newer_than:1d");
+      // Tarik 20 transaksi terakhir (newer_than:2d untuk memastikan tidak ada yang terlewat karena overlap waktu)
+      const query = encodeURIComponent("from:(bankmandiri.co.id OR bca.co.id OR livin) newer_than:2d");
       const gmailApi = "https://gmail.googleapis.com/gmail/v1/users/me/messages";
       
-      const listRes = await fetch(`${gmailApi}?q=${query}&maxResults=10`, {
+      const listRes = await fetch(`${gmailApi}?q=${query}&maxResults=20`, {
         headers: { Authorization: `Bearer ${access_token}` },
       });
 

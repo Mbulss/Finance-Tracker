@@ -1,5 +1,12 @@
 {
-  "crons": []
+  "crons": [
+    {
+      "path": "/api/cron/email-sync",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/weekly-summary",
+      "schedule": "0 8 * * 1"
+    }
+  ]
 }
-
-

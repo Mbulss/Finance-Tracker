@@ -39,5 +39,5 @@ jobs:
           # 3. Weekly Summary (Run if Monday and hour is 08)
           if [ "$DAY_OF_WEEK" == "1" ] && [ "$HOUR" == "08" ]; then
             echo "Triggering Weekly Summary..."
-            curl -s -X GET "$APP_URL/api/cron/weekly-summary?secret=$CRON_SECRET" -o /dev/null -w "%{http_code}\n"
+            curl -s -f -X GET "$APP_URL/api/cron/weekly-summary?secret=$CRON_SECRET" -o /dev/null -w "Summary Trigger Result: %{http_code}\n"
           fi
