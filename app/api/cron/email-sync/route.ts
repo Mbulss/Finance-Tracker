@@ -54,7 +54,9 @@ export async function GET(req: Request) {
       });
 
       if (!tokenRes.ok) {
-        results.push({ userId: integration.user_id, status: "token_failed" });
+        const errorBody = await tokenRes.text();
+        console.error(`Token refresh failed for user ${integration.user_id}:`, errorBody);
+        results.push({ userId: integration.user_id, status: "token_failed", error: errorBody });
         continue;
       }
 
